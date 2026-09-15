@@ -1,0 +1,4481 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kindle App — Quran &amp; Tasbih</title>
+  <style>
+    @font-face {
+      font-family: 'UthmanicHafs';
+      src: url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2') format('woff2');
+      font-display: block;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: #fff;
+      color: #000;
+      font-family: Georgia, "Times New Roman", serif;
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      padding: 4px 6px;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    /* ── SCREENS ── */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    #screen-play.active {
+      display: block;
+    }
+
+    /* ── TYPOGRAPHY ── */
+    h1 { font-size: 1.15rem; text-align: center; margin: 4px 0 6px; }
+    .sub { text-align: center; font-size: 0.78rem; color: #333; margin-bottom: 8px; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: block; width: 100%; padding: 11px 8px; margin: 4px 0;
+      font-size: 1.05rem; font-weight: bold; text-align: center;
+      border: 2px solid #000; background: #fff; color: #000;
+      cursor: pointer; border-radius: 6px;
+    }
+    .btn:active { background: #000; color: #fff; }
+    .btn-primary { background: #000; color: #fff; }
+    .btn-primary:active { background: #333; }
+
+    .btn-row {
+      display: table;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 4px 0;
+      margin: 3px 0 0;
+    }
+    .btn-row .btn-sm {
+      display: table-cell;
+      width: 33%;
+      padding: 16px 2px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid #000;
+      background: #fff;
+      color: #000;
+      cursor: pointer;
+      border-radius: 6px;
+      vertical-align: middle;
+    }
+    .btn-row .btn-sm:active { background: #000; color: #fff; }
+    .btn-row .btn-menu { background: #ddd; color: #000; }
+
+    /* ── PIN INPUT ── */
+    .pin-input {
+      width: 100%; padding: 12px; font-size: 1.4rem; text-align: center;
+      letter-spacing: 0.3em; border: 2px solid #000; border-radius: 8px;
+      background: #fff; color: #000; outline: none; margin: 8px 0;
+      font-family: monospace;
+    }
+
+    /* ── PLAY SCREEN ── */
+    .status-bar {
+      border: 1px solid #000; padding: 3px 6px; font-size: 0.68rem;
+      text-align: center; margin-bottom: 3px; background: #f5f5f5;
+    }
+    .counter-box {
+      border: 3px solid #000; border-radius: 10px; padding: 8px 8px 6px;
+      text-align: center; margin: 3px 0;
+      overflow-y: hidden;
+      height: 70vh; /* tinggi tetap — ubah nilai ini ikut saiz skrin Kindle */
+      transition: overflow 0s;
+    }
+    .counter-box.boleh-skrol {
+      overflow-y: auto;
+    }
+    .mode-label {
+      font-size: 0.65rem; font-weight: bold; letter-spacing: 0.04em;
+      text-transform: uppercase; margin-bottom: 2px;
+    }
+    .side-label { font-size: 0.65rem; font-weight: bold; margin-bottom: 4px; }
+
+    /* Teks Arab — dibesarkan untuk skrin Kindle 121x90mm */
+    .arab-text {
+      font-family: 'UthmanicHafs', 'Traditional Arabic', serif;
+      font-size: 2.4rem;
+      font-weight: 600;
+      line-height: 2.0;
+      direction: rtl;
+      text-align: right;
+      word-break: break-word;
+      margin: 4px 0;
+      white-space: pre-wrap;
+    }
+    /* Ayat sederhana panjang */
+    .arab-text.panjang {
+      font-size: 2.4rem;
+      line-height: 2.0;
+    }
+    /* Ayat sangat panjang */
+    .arab-text.sangat-panjang {
+      font-size: 2.4rem;
+      line-height: 2.0;
+    }
+
+    /* Teks terjemahan */
+    .terjemah-text {
+      font-size: 1.25rem;
+      line-height: 1.6;
+      font-weight: normal;
+      text-align: left;
+      word-break: break-word;
+      margin: 4px 0;
+      white-space: pre-wrap;
+    }
+
+    /* Teks biasa (tamat, mesej) */
+    .biasa-text {
+      font-size: 1.1rem;
+      line-height: 1.4;
+      font-weight: bold;
+      text-align: center;
+      word-break: break-word;
+      margin: 4px 0;
+      white-space: pre-wrap;
+    }
+
+    #main-text { min-height: 60px; }
+
+    .progress { font-size: 1.4rem; margin-top: 3px; }
+    .meta { font-size: 0.65rem; color: #444; margin-top: 1px; }
+    .msg { text-align: center; font-size: 0.75rem; margin: 2px 0; min-height: 0.9em; }
+    .error { color: #800; font-weight: bold; }
+    .footer { text-align: center; font-size: 0.65rem; color: #666; margin-top: 8px; }
+
+    /* ── LOADING FASA ── */
+    #loading-fasa {
+      display: none;
+      text-align: center;
+      font-size: 0.78rem;
+      color: #444;
+      margin: 6px 0 2px;
+      min-height: 1.2em;
+      letter-spacing: 0.01em;
+    }
+    #loading-fasa.show { display: block; }
+
+    /* ── TERSKIP OVERLAY ── */
+    #terskip-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+      z-index: 999;
+      box-sizing: border-box;
+      padding: 8px 6px;
+      max-width: 420px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    #terskip-overlay.show { display: block; }
+    .terskip-header {
+      border: 1px solid #000;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.68rem;
+      text-align: center;
+      background: #f5f5f5;
+      margin-bottom: 4px;
+    }
+    .terskip-box {
+      border: 3px solid #000;
+      border-radius: 10px;
+      padding: 8px;
+      text-align: center;
+      margin: 3px 0;
+      height: 70vh;
+      overflow-y: hidden;
+      box-sizing: border-box;
+    }
+    .terskip-box.boleh-skrol {
+      overflow-y: auto;
+    }
+    #terskip-mini-box {
+      border: 3px solid #000;
+      border-radius: 10px;
+      padding: 8px;
+      text-align: center;
+      margin: 3px 0;
+      height: 70vh;
+      overflow-y: hidden;
+      box-sizing: border-box;
+    }
+    #terskip-mini-box.boleh-skrol {
+      overflow-y: auto;
+    }
+    /* ── WS NOTIFICATION BADGE ── */
+    #ws-notif-badge {
+      display: none;
+      position: fixed; top: 8px; right: 8px;
+      background: #000; color: #fff;
+      border: 2px solid #000; border-radius: 10px;
+      padding: 5px 12px; font-size: 0.78rem; font-weight: bold;
+      cursor: pointer; z-index: 10000;
+      letter-spacing: 0.03em;
+      line-height: 1.6; white-space: pre-line; text-align: left;
+      max-width: 160px;
+    }
+    #ws-notif-badge.active { display: block; }
+
+    /* ── AZAN LOCK SCREEN ── */
+    /* ── LOCK MANUAL ── */
+    #lock-overlay {
+      display: none; position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%; background: #000; z-index: 99999;
+      flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px; text-align: center;
+    }
+    #lock-overlay.active { display: flex; }
+    #lock-fasa-countdown { display: none; }
+    #lock-fasa-countdown.active { display: flex; }
+    #azan-cd-overlay { display: none; }
+    #azan-cd-overlay.active { display: flex; }
+    #azan-lock {
+      display: none; position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%; z-index: 99998;
+      background: radial-gradient(circle at top left, #020617 0, #030712 45%, #000 100%);
+      flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px 20px; text-align: center;
+    }
+    #azan-lock.active { display: flex; }
+    .azan-label {
+      font-size: 0.68rem; font-weight: bold; letter-spacing: 0.15em;
+      text-transform: uppercase; color: #6b7280; margin-bottom: 6px;
+    }
+    .azan-waktu-nama {
+      font-size: 1.5rem; font-weight: bold; color: #34d399;
+      margin-bottom: 4px; letter-spacing: 0.05em;
+    }
+    .azan-waktu-jam {
+      font-size: 1rem; color: #9ca3af; margin-bottom: 4px;
+    }
+    .azan-lokasi {
+      font-size: 0.75rem; color: #4b5563; margin-bottom: 28px;
+    }
+    .azan-countdown-num {
+      font-size: 5rem; font-weight: bold; color: #fff;
+      line-height: 1; margin: 10px 0;
+      text-shadow: 0 0 40px rgba(52,211,153,0.4);
+      transition: all 0.3s;
+    }
+    .azan-countdown-label {
+      font-size: 1rem; color: #9ca3af; margin-bottom: 24px;
+      min-height: 1.5em; letter-spacing: 0.05em;
+    }
+    .azan-nafas-label {
+      font-size: 0.85rem; color: #6366f1; letter-spacing: 0.08em;
+      margin-bottom: 8px; min-height: 1.2em;
+    }
+    .azan-nafas-bar-wrap {
+      width: 200px; height: 6px; background: #1f2937;
+      border-radius: 999px; margin: 0 auto 20px; overflow: hidden;
+    }
+    .azan-nafas-bar {
+      height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      border-radius: 999px; width: 0%; transition: width linear;
+    }
+    .azan-pin-wrap { width: 100%; max-width: 240px; margin: 0 auto; }
+    .azan-pin-input {
+      display: block; width: 100%; padding: 12px;
+      font-size: 1.4rem; text-align: center; letter-spacing: 0.4em;
+      background: #111; color: #fff; border: 1px solid #334155;
+      border-radius: 8px; margin: 10px 0; outline: none;
+    }
+    .azan-pin-input:focus { border-color: #34d399; }
+    .azan-btn {
+      width: 100%; max-width: 240px; padding: 13px;
+      font-size: 0.9rem; font-weight: bold; border: none;
+      border-radius: 999px; cursor: pointer; margin: 6px auto;
+      display: block; font-family: Georgia, serif;
+    }
+    .azan-btn-primary {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #e5e7eb; box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+    }
+    .azan-btn-green {
+      background: linear-gradient(135deg, #059669, #34d399);
+      color: #fff; box-shadow: 0 4px 15px rgba(52,211,153,0.3);
+    }
+    .azan-msg { font-size: 0.78rem; color: #f87171; min-height: 1.2em; margin: 4px 0; }
+    .azan-test-wrap {
+      position: fixed; bottom: 70px; right: 18px; z-index: 99997;
+    }
+    .azan-test-btn {
+      background: #1e293b; color: #6b7280; border: 1px solid #334155;
+      border-radius: 8px; padding: 6px 10px; font-size: 0.68rem;
+      cursor: pointer; font-family: Georgia, serif;
+    }
+    .azan-test-btn.on {
+      background: #059669; color: #fff; border-color: #34d399;
+      font-weight: bold;
+    }
+    .azan-test-panel {
+      display: none; position: fixed;
+      left: 8px; right: 8px; bottom: 56px;
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+      padding: 8px; z-index: 99997; width: auto;
+      box-sizing: border-box;
+    }
+    .azan-test-panel.active { display: block; }
+    .azan-test-grid {
+      display: table; width: 100%;
+      border-collapse: separate; border-spacing: 8px 0;
+    }
+    .azan-test-clock-col, .azan-test-ctrl-col { display: table-cell; vertical-align: middle; }
+    .azan-test-clock-col { width: 132px; text-align: center; }
+    .azan-test-ctrl-col { width: auto; }
+    .azan-test-panel input {
+      display: block; width: 100%; padding: 5px;
+      background: #0f172a; color: #e5e7eb;
+      border: 1px solid #334155; border-radius: 6px;
+      font-size: 0.78rem; text-align: center; margin: 4px 0;
+      outline: none; font-family: Georgia, serif;
+    }
+    .azan-test-panel button {
+      display: block; width: 100%; padding: 7px 6px;
+      background: #6366f1; color: #fff; border: none; border-radius: 6px;
+      font-size: 0.75rem; font-weight: bold; cursor: pointer;
+      font-family: Georgia, serif; margin-top: 4px;
+    }
+    .azan-test-panel .azan-test-cancel {
+      background: transparent; color: #6b7280;
+      border: 1px solid #334155; margin-top: 4px;
+    }
+    #azan-clock-svg { width: 128px; height: 128px; }
+    .azan-ampm-row { display: table; width: 100%; border-collapse: separate; border-spacing: 4px 0; }
+    .azan-ampm-row button { display: table-cell; width: 50%; margin-top: 0; }
+    #ws-notif-overlay {
+      display: none; position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 10001;
+      align-items: center; justify-content: center;
+    }
+    #ws-notif-overlay.active { display: flex; }
+    #ws-notif-box {
+      background: #fff; border: 3px solid #000; border-radius: 10px;
+      padding: 16px; width: 90%; max-width: 340px;
+    }
+    #ws-notif-title {
+      font-size: 0.85rem; font-weight: bold;
+    }
+    #ws-notif-list { max-height: 220px; overflow-y: auto; margin-bottom: 12px; }
+    .ws-notif-item {
+      border: 1px solid #ddd; border-radius: 6px;
+      padding: 8px 10px; margin-bottom: 6px;
+      font-size: 0.82rem; line-height: 1.5;
+    }
+    .ws-notif-from { font-weight: bold; font-size: 0.78rem; color: #333; margin-bottom: 2px; }
+    #ws-notif-err { color: #c00; font-size: 0.75rem; text-align: center; min-height: 1em; margin-bottom: 4px; }
+
+    body.auth-checking .screen { display: none !important; }
+
+    #screen-login { padding: 24px 12px; }
+
+    /* ── MENU ── */
+    #screen-menu { padding: 8px 4px; }
+    #screen-menu h1 { font-size: 1.1rem; text-align: center; margin: 6px 0 10px; }
+    .mode-label {
+      font-size: 0.72rem; text-align: center; color: #555; margin-bottom: 10px;
+      font-style: italic;
+    }
+    .btn-danger { border-color: #c00; color: #c00; }
+    .btn-danger:active { background: #c00; color: #fff; }
+    .ok { color: #006600; }
+
+    /* ── TASBIH SCREEN ── */
+    #screen-tasbih { padding: 6px 4px; }
+    .status-bar-flex {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.72rem; color: #555; border-bottom: 1px solid #ccc;
+      padding-bottom: 4px; margin-bottom: 8px;
+    }
+    .status-bar-flex .mode-tag {
+      font-weight: bold; font-size: 0.75rem; color: #000;
+      border: 1px solid #000; padding: 1px 5px; border-radius: 4px;
+    }
+    .count-display { text-align: center; margin: 10px 0 6px; }
+    .count-number {
+      font-size: 3.8rem; font-weight: bold; line-height: 1;
+      letter-spacing: -2px;
+    }
+    .count-done { font-size: 0.85rem; color: #555; margin-top: 2px; }
+    .progress-bar-wrap {
+      width: 100%; height: 8px; background: #e0e0e0;
+      border-radius: 4px; overflow: hidden; margin: 6px 0;
+    }
+    .progress-bar-fill {
+      height: 100%; background: #000; border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    .laci-box {
+      border: 2px solid #000; border-radius: 6px;
+      padding: 8px 10px; margin: 8px 0; min-height: 60px;
+    }
+    .laci-title { font-size: 0.95rem; font-weight: bold; color: #000; margin-bottom: 6px; }
+    .laci-nama { font-size: 1rem; font-weight: normal; color: #222; margin-bottom: 8px; }
+    .laci-zikir { font-size: 1.15rem; font-weight: bold; line-height: 1.45; }
+    .laci-maksud { font-size: 0.88rem; color: #333; margin-top: 6px; line-height: 1.4; font-style: italic; }
+    .laci-target { font-size: 0.75rem; color: #666; margin-top: 4px; }
+    #btn-tap {
+      display: block; width: 100%;
+      padding: 154px 8px; margin: 10px 0 6px;
+      font-size: 1.4rem; font-weight: bold; text-align: center;
+      border: 3px solid #000; background: #000; color: #fff;
+      cursor: pointer; border-radius: 8px;
+      letter-spacing: 1px;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    #btn-tap:active { background: #333; }
+    #btn-tap.mode-lain { padding: 44px 8px; }
+    #btn-tap.mode-tasbih { padding: 176px 8px; }
+    #btn-tap.done-state { background: #fff; color: #000; border-style: dashed; }
+    .btn-row-sm { display: flex; gap: 4px; margin: 4px 0; }
+    .btn-row-sm .bsm {
+      flex: 1; padding: 9px 2px; font-size: 0.78rem; font-weight: bold;
+      text-align: center; border: 2px solid #000; background: #fff; color: #000;
+      cursor: pointer; border-radius: 5px;
+    }
+    .btn-row-sm .bsm:active { background: #000; color: #fff; }
+    .btn-row-sm .bsm.on { background: #000; color: #fff; }
+    .laci-nav { display: flex; gap: 4px; margin: 6px 0; }
+    .laci-nav button {
+      flex: 1; padding: 10px 4px; font-size: 0.85rem; font-weight: bold;
+      text-align: center; border: 2px solid #000; background: #fff; color: #000;
+      cursor: pointer; border-radius: 5px;
+    }
+    .laci-nav button:active { background: #000; color: #fff; }
+    .laci-counter { text-align: center; font-size: 0.75rem; color: #555; margin: 2px 0 4px; }
+    .conn-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: #ccc; margin-right: 4px;
+      vertical-align: middle;
+    }
+    .conn-dot.live { background: #00aa00; }
+    .conn-dot.err  { background: #cc0000; }
+    .kat-list { margin: 6px 0; }
+    .kat-item {
+      padding: 9px 8px; margin: 3px 0; border: 2px solid #000;
+      border-radius: 5px; cursor: pointer; font-size: 0.9rem;
+    }
+    .kat-item:active { background: #000; color: #fff; }
+    .kat-item.aktif { background: #000; color: #fff; }
+    .kat-sub { font-size: 0.72rem; color: #666; margin-top: 1px; }
+    .kat-item.aktif .kat-sub { color: #ccc; }
+    #screen-kat { padding: 8px 4px; }
+    #screen-kat h1 { font-size: 1rem; text-align: center; margin: 6px 0 8px; }
+    #sync-badge { position: fixed; bottom: 6px; right: 8px; font-size: 0.65rem; color: #aaa; }
+
+  </style>
+</head>
+<body>
+
+  <!-- ══ SCREEN LOGIN ══ -->
+  <div id="screen-login" class="screen active">
+    <h1>Kindle App</h1>
+    <div class="sub">Al-Quran · Tasbih · PIN</div>
+    <input id="pin-input" class="pin-input" type="password" inputmode="numeric" maxlength="6" placeholder="PIN" autocomplete="off">
+    <button id="btn-login" class="btn btn-primary">Masuk</button>
+    <div id="loading-fasa"></div>
+    <div id="login-msg" class="msg"></div>
+  </div>
+
+  <!-- ══════════ MENU ══════════ -->
+  <div id="screen-menu" class="screen">
+    <h1>Kindle App</h1>
+    <div class="mode-label" id="menu-user-label"></div>
+
+    <button id="btn-menu-quran" class="btn btn-primary">📖 Al-Quran</button>
+    <button id="btn-menu-tasbih" class="btn">🔢 Countdown Tasbih</button>
+    <button id="btn-menu-wirid"  class="btn">🔄 Wirid</button>
+    <button id="btn-menu-doa"    class="btn">🤲 Doa</button>
+    <button id="btn-menu-hadis"  class="btn">📚 Hadis</button>
+    <button id="btn-menu-solat"  class="btn">🕌 Kesalahan & Khusyuk Solat</button>
+    <button id="btn-go-reminder-list" class="btn">[ REMINDER ]</button>
+
+    <div style="margin-top:10px;">
+      <button id="btn-logout" class="btn btn-danger">Log Keluar</button>
+    </div>
+    <div id="menu-err" class="msg error"></div>
+    <div id="azan-log-wrap" style="display:none;margin-top:8px;border:1px solid #334155;border-radius:8px;padding:8px;">
+      <div style="font-size:0.65rem;color:#9ca3af;margin-bottom:6px;">Waktu Solat Hari Ini</div>
+      <div id="azan-log-list" style="font-size:0.78rem;color:#e2e8f0;line-height:2;"></div>
+    </div>
+  </div>
+
+
+
+  <!-- ══ SCREEN PLAY ══ -->
+  <!-- SCREEN: REMINDER AKTIF -->
+  <div id="screen-reminder-aktif" class="screen" style="flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:14px;">
+    <div id="ra-hari" style="font-size:0.8rem;font-weight:700;border:2px solid #000;padding:4px 14px;border-radius:4px;"></div>
+    <div id="ra-nama" style="font-size:1.3rem;font-weight:700;color:#000;text-align:center;line-height:1.4;"></div>
+    <div id="ra-tarikh" style="font-size:0.85rem;color:#000;text-align:center;"></div>
+    <div id="ra-nota" style="display:none;font-size:0.82rem;color:#000;text-align:center;line-height:1.6;border:2px solid #000;border-radius:4px;padding:10px 14px;width:100%;box-sizing:border-box;"></div>
+    <input id="ra-input" type="text" placeholder='Taip "saya ingat" untuk tutup...' style="width:100%;background:#fff;border:2px solid #000;border-radius:4px;color:#000;padding:12px;font-size:1rem;text-align:center;outline:none;box-sizing:border-box;">
+    <div id="ra-pesan" style="font-size:0.75rem;font-weight:bold;min-height:16px;text-align:center;color:#000;"></div>
+    <button id="btn-ra-tidur" style="width:100%;padding:12px;border:2px solid #000;background:#000;color:#fff;font-size:0.9rem;font-weight:bold;cursor:pointer;border-radius:4px;">Tidur 2 Jam - Jangan Ganggu</button>
+    <div id="ra-countdown" style="font-size:0.75rem;color:#000;text-align:center;"></div>
+  </div>
+
+  <!-- SCREEN: REMINDER SENARAI -->
+  <div id="screen-reminder-list" class="screen">
+    <div class="status-bar" id="reminder-list-status">REMINDER</div>
+    <button id="btn-reminder-tambah" class="btn btn-primary" style="margin-bottom:8px;">+ Tambah Temu Janji</button>
+    <div id="reminder-list-kindle" style="overflow-y:auto;flex:1;padding-bottom:70px;"></div>
+    <button id="btn-reminder-list-back" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:999;width:80%;max-width:300px;padding:12px;border:2px solid #000;background:#fff;font-weight:bold;border-radius:4px;cursor:pointer;">Balik</button>
+  </div>
+
+  <!-- SCREEN: REMINDER TAMBAH -->
+  <div id="screen-reminder-tambah" class="screen" style="flex-direction:column;padding:8px;box-sizing:border-box;">
+    <div class="status-bar">TEMU JANJI BARU</div>
+    <div style="font-size:0.72rem;color:#000;margin:6px 0 2px;">Nama / Perkara:</div>
+    <input id="rk-nama" type="text" placeholder="Cth: Appointment Doktor..." style="width:100%;padding:10px;font-size:1rem;border:2px solid #000;border-radius:4px;box-sizing:border-box;margin-bottom:8px;">
+    <div style="font-size:0.72rem;color:#000;font-weight:bold;margin-bottom:2px;">Tarikh:</div>
+    <input id="rk-tarikh" type="date" style="width:100%;padding:10px;font-size:1rem;border:2px solid #000;border-radius:4px;box-sizing:border-box;margin-bottom:8px;background:#fff;color:#000;">
+    <div style="font-size:0.72rem;color:#000;margin-bottom:2px;">Masa (pilihan):</div>
+    <input id="rk-masa" type="time" style="width:100%;padding:10px;font-size:1rem;border:2px solid #000;border-radius:4px;box-sizing:border-box;margin-bottom:8px;background:#fff;color:#000;">
+    <div style="font-size:0.72rem;color:#000;margin-bottom:2px;">Nota (pilihan):</div>
+    <textarea id="rk-nota" placeholder="Alamat, perkara perlu dibawa..." style="width:100%;padding:10px;font-size:0.95rem;border:2px solid #000;border-radius:4px;box-sizing:border-box;resize:none;min-height:100px;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button id="btn-rk-batal" style="flex:1;padding:12px;border:2px solid #000;background:#fff;font-weight:bold;border-radius:4px;cursor:pointer;">Batal</button>
+      <button id="btn-rk-simpan" style="flex:1;padding:12px;border:2px solid #000;background:#000;color:#fff;font-weight:bold;border-radius:4px;cursor:pointer;">Simpan</button>
+    </div>
+    <div id="rk-msg" style="text-align:center;font-size:0.75rem;color:#000;margin-top:6px;min-height:1em;font-weight:bold;"></div>
+  </div>
+
+  <div id="screen-play" class="screen">
+    <div class="status-bar" id="play-status">—</div>
+    <div class="counter-box" id="counter-box">
+      <div class="mode-label" id="play-mode">—</div>
+      <div class="side-label" id="side-label">ARAB</div>
+      <div id="main-text" class="arab-text">—</div>
+      <div class="progress" id="play-progress"></div>
+      <div class="meta" id="play-meta"></div>
+    </div>
+    <button id="btn-next" class="btn btn-primary">SETERUSNYA</button>
+    <div class="btn-row">
+      <button id="btn-back-menu" class="btn-sm btn-menu">Menu</button>
+      <button id="btn-terskip" class="btn-sm">Terskip</button>
+      <button id="btn-laci" class="btn-sm">Laci</button>
+      <button id="btn-go-reminder-play" class="btn-sm">Reminder</button>
+    </div>
+    <div id="play-err" class="msg error"></div>
+  </div>
+
+  <!-- ══ SCREEN LACI ══ -->
+  <div id="screen-laci" class="screen">
+    <div class="status-bar" id="laci-status">LACI QURAN</div>
+    <div style="border:2px solid #000;border-radius:8px;padding:8px;margin:4px 0;font-size:0.78rem;line-height:1.8;">
+      <div id="laci-semasa" style="font-weight:bold;">—</div>
+      <div id="laci-dibaca">—</div>
+      <div id="laci-baki-surah">—</div>
+      <div id="laci-baki-khatam">—</div>
+    </div>
+    <div style="border:1px solid #ccc;border-radius:6px;padding:7px 9px;margin:4px 0 6px;font-size:0.68rem;color:#555;line-height:1.7;font-style:italic;">
+      📌 Kindle simpan kemajuan setiap ayat kerana ia baca secara lurus tanpa mod berganda.<br><br>
+      📱 App phone  tidak menggunakana formula n+1 — ini tidak mengacau pengguna kerana kemajuan tersimpan setiap kali ayat masuk ke bahagian maksud, dan pengguna biasanya berhenti selepas ada simpanan terkini yang membuatkan minda pengguna sudah set bahawa jika mereka keluar drpd alquran selepas kemajuan, mereka akan masuk balik pada gandaan 5 dengan status kemajuan juga menunjukkan ayat 5. <br><br>
+      🔢 Ayat semasa di Kindle menggunakan formula n+1 (n = ayat yang baru selesai dibaca) supaya kemajuan tepat. Ayat 1 dikecualikan — ia kekal sebagai 1 supaya pengguna sentiasa mula dari awal surah baru.
+    </div>
+    <div style="font-size:0.72rem;color:#444;margin:6px 0 4px;text-align:center;">Pilih surah untuk baca</div>
+    <div id="laci-surah-list" style="overflow-y:auto;max-height:48vh;border:1px solid #ccc;border-radius:6px;"></div>
+    <button id="btn-laci-balik" class="btn" style="margin-top:6px;">Kembali</button>
+  </div>
+
+  <!-- ══ SCREEN MINI ══ -->
+  <div id="screen-mini" class="screen">
+    <div class="status-bar" id="mini-status">—</div>
+    <div class="counter-box" id="mini-box">    
+      <div class="side-label" id="mini-side">ARAB</div>
+      <div id="mini-text" class="arab-text">—</div>
+      <div class="progress" id="mini-progress"></div>
+    </div>
+    <button id="btn-mini-next" class="btn btn-primary">SETERUSNYA</button>
+    <div class="btn-row">
+      <button id="btn-mini-balik" class="btn-sm btn-menu">Kembali</button>
+      <button id="btn-mini-flip" class="btn-sm">Maksud</button>
+      <button id="btn-mini-reset" class="btn-sm">Mula</button>
+    </div>
+    <button id="btn-mini-terskip" class="btn-sm" style="width:100%;margin-top:4px;">Terskip</button>
+  </div>
+
+  <!-- ── TERSKIP MINI OVERLAY ── -->
+  <div id="terskip-mini-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:998;display:none;flex-direction:column;padding:8px;">
+    <div class="status-bar" id="terskip-mini-title">TERSKIP MINI</div>
+    <div class="terskip-box" id="terskip-mini-box">
+      <div class="side-label" id="terskip-mini-side">ARAB</div>
+      <div id="terskip-mini-text" class="arab-text">—</div>
+      <div class="progress" id="terskip-mini-ayat"></div>
+    </div>
+    <button id="btn-terskip-mini-next" class="btn btn-primary">SETERUSNYA</button>
+    <div class="btn-row">
+      <button id="btn-terskip-mini-tutup" class="btn-sm btn-menu">Tutup</button>
+      <button id="btn-terskip-mini-flip" class="btn-sm">Maksud</button>
+      <button id="btn-terskip-mini-dummy" class="btn-sm" style="visibility:hidden;"></button>
+    </div>
+  </div>
+
+  <!-- ── PIN OVERLAY RESET MINI ── -->  
+  <div id="mini-reset-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:999;padding:20px 10px;">
+    <div style="max-width:300px;margin:20px auto;border:2px solid #000;border-radius:8px;padding:12px;text-align:center;">
+      <div style="font-weight:bold;font-size:0.85rem;margin-bottom:6px;">Masukkan PIN untuk reset ke Ayat 1</div>
+      <input id="mini-reset-pin" class="pin-input" type="password" inputmode="numeric" maxlength="6" placeholder="PIN" autocomplete="off">
+      <button id="mini-reset-ok" class="btn btn-primary" style="margin-top:4px;padding:8px;">Sahkan</button>
+      <button id="mini-reset-batal" class="btn" style="margin-top:4px;padding:8px;">Batal</button>
+      <div id="mini-reset-msg" class="msg error"></div>
+    </div>
+  </div>
+
+  <!-- PLACEHOLDER — jangan buang tag ini -->
+  <div style="display:none;">
+  </div>
+
+  <!-- ══════════ PILIH KATEGORI ══════════ -->
+  <div id="screen-kat" class="screen">
+    <h1 id="kat-title">Pilih Kategori</h1>
+    <div id="kat-list" class="kat-list" style="padding-bottom:70px;"></div>    
+    <button id="btn-kat-back" class="btn" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.3);width:80%;max-width:300px;">← Balik</button>
+  </div>
+
+  <!-- ══════════ TASBIH SCREEN ══════════ -->
+  <div id="screen-tasbih" class="screen">
+
+    <!-- Status bar -->
+    <div class="status-bar-flex">
+      <span><span class="conn-dot" id="conn-dot"></span><span id="conn-label">Menyambung...</span></span>
+      <span class="mode-tag" id="mode-tag">TASBIH</span>
+    </div>
+    <div id="status-time" style="font-size:0.62rem;color:#777;text-align:right;margin-bottom:3px;min-height:0.9em;"></div>
+
+    <!-- Kiraan -->
+    <div class="count-display">
+      <div class="count-number" id="count-number">—</div>
+      <div class="count-done"   id="count-done"></div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+
+    <!-- Laci doa/hadis (tersembunyi untuk mode tasbih biasa) -->
+    <div class="laci-box" id="laci-box" style="display:none;">
+      <div class="laci-title" id="laci-cat"></div>
+      <div class="laci-nama" id="laci-nama"></div>
+      <div class="laci-zikir" id="laci-zikir"></div>
+      <div class="laci-maksud" id="laci-maksud"></div>
+      <div class="laci-target" id="laci-target"></div>
+    </div>
+
+    <!-- Navigasi laci (doa/hadis sahaja) -->
+    <div class="laci-nav" id="laci-nav" style="display:none;">
+      <button id="btn-prev-laci">← Sebelum</button>
+      <button id="btn-next-laci">Seterusnya →</button>
+    </div>
+    <div class="laci-counter" id="laci-counter"></div>
+
+    <!-- TAP button -->
+    <button id="btn-tap">TAP — ISTIGFAR</button>
+
+    <!-- Butang bawah -->
+    <div class="btn-row-sm">
+      <button class="bsm" id="btn-back-tasbih">← Menu</button>
+      <button class="bsm" id="btn-refresh">🔄 Refresh</button>
+      <button class="bsm" id="btn-reset-confirm">Reset</button>
+    </div>
+
+    <div id="tasbih-err" class="msg error"></div>
+    <div id="tasbih-ok"  class="msg ok"></div>
+  </div>
+
+  <!-- Reset popup -->
+  <div id="reset-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:center;justify-content:center;">
+    <div style="background:#fff;border:3px solid #000;border-radius:10px;padding:20px;width:85%;max-width:320px;text-align:center;">
+      <div style="font-size:0.9rem;font-weight:bold;margin-bottom:10px;">Taip "reset" untuk confirm:</div>
+      <input id="reset-input" type="text" placeholder="reset" style="width:100%;padding:10px;font-size:1rem;border:2px solid #000;border-radius:6px;text-align:center;box-sizing:border-box;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;">
+        <button id="btn-reset-cancel" style="flex:1;padding:10px;border:2px solid #000;background:#fff;font-weight:bold;border-radius:6px;cursor:pointer;">Batal</button>
+        <button id="btn-reset-ok" style="flex:1;padding:10px;border:2px solid #c00;background:#c00;color:#fff;font-weight:bold;border-radius:6px;cursor:pointer;">Reset</button>
+      </div>
+      <div id="reset-err" style="color:#c00;font-size:0.78rem;margin-top:8px;min-height:1em;"></div>
+    </div>
+  </div>
+
+  <!-- Sync badge -->
+  <div id="sync-badge"></div>
+
+
+  <!-- ══ AZAN LOCK SCREEN ══ -->
+  <!-- LOCK MANUAL -->
+  <div id="lock-overlay">
+    <div style="color:#fff;font-size:1.1rem;font-weight:bold;letter-spacing:0.15em;margin-bottom:24px;opacity:0.5;">🔒 LOCKED</div>
+    <input id="lock-pin-input" class="pin-input" type="password" inputmode="numeric" maxlength="6" placeholder="PIN" autocomplete="off" style="max-width:200px;background:#111;color:#fff;border-color:#444;">
+    <button id="lock-pin-ok" class="btn btn-primary" style="max-width:200px;margin-top:8px;padding:10px;">Unlock</button>
+    <div id="lock-pin-msg" style="color:#f44;font-size:0.8rem;margin-top:8px;min-height:1.2em;"></div>
+    <button id="lock-cd-start" class="azan-btn azan-btn-green" style="margin-top:16px;max-width:200px;">▶ Mula Countdown</button>
+    <div id="lock-fasa-countdown" style="position:absolute;top:0;left:0;width:100%;height:100%;background:#000;flex-direction:column;align-items:center;justify-content:center;z-index:2;">
+      <div class="azan-countdown-num" id="lock-cd-num">5</div>
+      <div class="azan-countdown-label" id="lock-cd-label"></div>
+      <div class="azan-nafas-label" id="lock-nafas-label"></div>
+      <div class="azan-nafas-bar-wrap" id="lock-nafas-bar-wrap" style="display:none;">
+        <div class="azan-nafas-bar" id="lock-nafas-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUTANG LOCK TERAPUNG -->
+  <button id="btn-lock-float" style="position:fixed;bottom:18px;right:18px;width:42px;height:42px;border-radius:50%;border:2px solid #000;background:#fff;color:#000;font-size:1.1rem;cursor:pointer;z-index:9998;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.18);">🔒</button>
+
+  <div id="azan-lock">
+    <div class="azan-label">WAKTU SOLAT</div>
+    <div class="azan-waktu-nama" id="azan-waktu-nama">—</div>
+    <div class="azan-waktu-jam" id="azan-waktu-jam">—</div>
+    <div class="azan-lokasi" id="azan-lokasi">—</div>
+    <div class="azan-pin-wrap" style="margin-bottom:12px;">
+      <input class="azan-pin-input" id="azan-pin-input" type="password"
+             inputmode="numeric" maxlength="6" placeholder="PIN" autocomplete="off">
+      <button class="azan-btn azan-btn-primary" id="azan-pin-ok">Unlock</button>
+      <div class="azan-msg" id="azan-pin-msg"></div>
+    </div>
+    <button class="azan-btn azan-btn-green" id="azan-pin-cd-start">▶ Mula Countdown</button>
+    <button class="azan-btn azan-btn-green" id="azan-cd-start" style="display:none;">Saya Sedia — Mula Countdown</button>
+    <div id="azan-cd-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at top left,#020617 0,#030712 45%,#000 100%);flex-direction:column;align-items:center;justify-content:center;z-index:2;">
+      <div class="azan-countdown-num" id="azan-cd-num">5</div>
+      <div class="azan-countdown-label" id="azan-cd-label"></div>
+      <div class="azan-nafas-label" id="azan-nafas-label"></div>
+      <div class="azan-nafas-bar-wrap" id="azan-nafas-bar-wrap" style="display:none;">
+        <div class="azan-nafas-bar" id="azan-nafas-bar"></div>
+      </div>
+      <div style="margin-top:20px;border-top:1px solid #1f2937;padding-top:16px;width:100%;max-width:240px;">
+        <div style="font-size:0.72rem;color:#6b7280;margin-bottom:8px;">Unlock terus:</div>
+        <input class="azan-pin-input" id="azan-cd-pin-input" type="password"
+               inputmode="numeric" maxlength="6" placeholder="PIN" autocomplete="off">
+        <button class="azan-btn azan-btn-primary" id="azan-cd-pin-ok">Unlock</button>
+        <div class="azan-msg" id="azan-cd-pin-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AZAN TEST ── -->
+  <div class="azan-test-wrap">
+    <button class="azan-test-btn" id="btn-azan-test">🧪 Test Azan</button>
+    <div class="azan-test-panel" id="azan-test-panel">
+      <div class="azan-test-grid">
+        <div class="azan-test-clock-col">
+          <div id="azan-clock-display" style="font-size:1.1rem;font-weight:bold;color:#34d399;text-align:center;letter-spacing:1px;cursor:pointer;">12:00</div>
+          <div id="azan-clock-mode-label" style="font-size:0.62rem;color:#9ca3af;text-align:center;margin:2px 0 4px;cursor:pointer;">Ketik JAM</div>
+          <svg id="azan-clock-svg" width="128" height="128" viewBox="0 0 220 220" style="cursor:pointer;touch-action:none;">
+            <circle cx="110" cy="110" r="108" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+            <line id="azan-clock-hand" x1="110" y1="110" x2="110" y2="30" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round"/>
+            <circle id="azan-clock-dot" cx="110" cy="30" r="10" fill="#6366f1"/>
+            <text id="azan-clock-num-label" x="110" y="114" text-anchor="middle" dominant-baseline="middle" font-size="22" font-weight="bold" fill="#fff">12</text>
+          </svg>
+        </div>
+        <div class="azan-test-ctrl-col">
+          <div id="azan-test-status-pill" style="display:none;text-align:center;font-size:0.62rem;font-weight:bold;color:#052e16;background:#34d399;border-radius:6px;padding:4px 6px;">TEST SEDANG AKTIF</div>
+          <div class="azan-ampm-row">
+            <button id="btn-ampm-am" onclick="azanPickerSetAmpm(0)" style="padding:5px 8px;border-radius:6px;font-size:0.75rem;font-weight:bold;cursor:pointer;border:2px solid #6366f1;background:#6366f1;color:#fff;">AM</button>
+            <button id="btn-ampm-pm" onclick="azanPickerSetAmpm(1)" style="padding:5px 8px;border-radius:6px;font-size:0.75rem;font-weight:bold;cursor:pointer;border:2px solid #334155;background:transparent;color:#9ca3af;">PM</button>
+          </div>
+          <div style="font-size:0.62rem;color:#9ca3af;margin-top:4px;">Tarikh</div>
+          <input type="date" id="azan-test-tarikh" style="background:#1e293b;border:1px solid #334155;color:#fff;border-radius:6px;padding:4px;font-size:0.72rem;margin:2px 0;">
+          <div id="azan-test-preview" style="font-size:0.65rem;color:#34d399;text-align:center;min-height:1em;"></div>
+          <div id="azan-test-offset-label" style="font-size:0.62rem;color:#9ca3af;text-align:center;"></div>
+          <input type="hidden" id="azan-test-input">
+          <button id="btn-azan-test-set">Aktifkan Test</button>
+          <button id="btn-azan-test-stop" style="display:none;background:#dc2626;border-color:#dc2626;">Henti Test</button>
+          <button id="btn-azan-test-clear-unlock" style="background:transparent;color:#f87171;border:1px solid #7f1d1d;">Padam Sejarah Unlock</button>
+          <button class="azan-test-cancel" id="btn-azan-test-cancel">Batal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WS NOTIFICATION BADGE ══ -->
+  <div id="ws-notif-badge"><span id="ws-notif-names"></span></div>
+  
+  <!-- ══ WS CONFIRM OVERLAY ══ -->
+  <div id="ws-confirm-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10002;align-items:center;justify-content:center;">
+    <div style="background:#fff;border:2px solid #000;border-radius:10px;padding:18px 16px;width:80%;max-width:280px;text-align:center;">
+      <div id="ws-confirm-msg" style="font-size:0.88rem;margin-bottom:16px;line-height:1.5;"></div>
+      <div style="display:flex;gap:8px;">
+        <button id="ws-confirm-tidak" style="flex:1;padding:10px;border:2px solid #000;background:#fff;font-weight:bold;border-radius:6px;cursor:pointer;font-size:0.88rem;">Batal</button>
+        <button id="ws-confirm-ya" style="flex:1;padding:10px;border:2px solid #000;background:#000;color:#fff;font-weight:bold;border-radius:6px;cursor:pointer;font-size:0.88rem;">Ya</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WS NOTIFICATION OVERLAY ══ -->
+  <div id="ws-notif-overlay">
+    <div id="ws-notif-box">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;border-bottom:1px solid #ccc;padding-bottom:8px;">
+        <div id="ws-notif-title">📬 Notifikasi</div>
+        <button id="btn-ws-notif-batal" style="width:28px;height:28px;border-radius:50%;border:2px solid #000;background:#fff;color:#000;font-size:1rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;flex-shrink:0;">×</button>
+      </div>
+      <div style="font-size:0.72rem;color:#555;line-height:1.5;margin-bottom:10px;padding:8px;background:#f9f9f9;border-radius:6px;border:1px solid #ddd;">
+        Sekiranya terdapat lebih daripada satu perbualan aktif dalam tempoh yang sama, notifikasi akan dipaparkan sebagai <strong>"WhatsApp"</strong> dan bukannya nama pengirim sebenar. Walaupun demikian, notifikasi sebegini tetap memerlukan perhatian — sila ambil telefon dan semak WhatsApp anda. Sekiranya didapati ia berpunca daripada kumpulan yang kurang relevan, sila <strong>redam (mute)</strong> kumpulan tersebut bagi mengelakkan gangguan notifikasi pada masa hadapan.
+      </div>
+      <div id="ws-notif-list"></div>
+      <input id="ws-notif-input" type="text" style="display:none;" autocomplete="off">
+      <div id="ws-notif-err"></div>
+    </div>
+  </div>
+
+  <!-- ══ TERSKIP OVERLAY ══ -->
+  <div id="terskip-overlay">
+    <div class="terskip-header">
+      TERSKIP · <span id="terskip-progress">0/0</span>
+    </div>
+    <div class="terskip-box" id="terskip-box">
+      <div class="mode-label" id="terskip-title">—</div>
+      <div class="side-label" id="terskip-side">ARAB</div>
+      <div id="terskip-text" class="arab-text">—</div>
+      <div class="progress" id="terskip-ayat"></div>
+    </div>
+    <button id="btn-terskip-next" class="btn btn-primary">SETERUSNYA</button>
+    <div class="btn-row">
+      <button id="btn-terskip-tutup" class="btn-sm btn-menu">Tutup</button>
+      <button id="btn-terskip-flip" class="btn-sm">Maksud</button>
+      <button id="btn-terskip-dummy" class="btn-sm" style="visibility:hidden;"></button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ══════════════════════════════════════════
+    // FIREBASE CONFIG
+    // ══════════════════════════════════════════
+    var firebaseConfig = {
+      apiKey: "AIzaSyDGZnJO0ZAm0FapKEoT2uIDSoy_BR_eug4",
+      authDomain: "stress-presentation.firebaseapp.com",
+      projectId: "stress-presentation",
+      storageBucket: "stress-presentation.firebasestorage.app",
+      messagingSenderId: "212017480700",
+      appId: "1:212017480700:web:78bd9c81bee79fb3eb2879",
+      measurementId: "G-7EGVL2VE9H"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var auth = firebase.auth();
+    var db = firebase.firestore();
+    document.body.classList.add('auth-checking');
+    var ADMIN_EMAIL = 'adha86614@gmail.com';
+
+    // ══════════════════════════════════════════
+    // DATA QURAN STATIK
+    // ══════════════════════════════════════════
+    var QURAN_SURAH_AYAT = [7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
+    var QURAN_SURAH_NAMES = ['Al-Fatihah','Al-Baqarah','Ali-\'Imran','An-Nisaa\'','Al-Ma\'idah','Al-An\'aam','Al-A\'raaf','Al-Anfaal','At-Taubah','Yunus','Hud','Yusuf','Ar-Ra\'d','Ibrahim','Al-Hijr','An-Nahl','Al-Israa\'','Al-Kahfi','Maryam','Taha','Al-Anbiyaa\'','Al-Hajj','Al-Mu\'minuun','An-Nur','Al-Furqaan','Asy-Syu\'araa\'','An-Naml','Al-Qasas','Al-\'Ankabuut','Ar-Ruum','Luqman','As-Sajdah','Al-Ahzaab','Saba\'','Faatir','Yaa siin','As-Saaffaat','Saad','Az-Zumar','Ghaafir','Fussilat','Asy-Syura','Az-Zukhruf','Ad-Dukhaan','Al-Jaathiyah','Al-Ahqaaf','Muhammad','Al-Fat-h','Al-Hujuraat','Qaaf','Adz-Dzaariyaat','At-Tuur','An-Najm','Al-Qamar','Ar-Rahmaan','Al-Waaqi\'ah','Al-Hadiid','Al-Mujaadalah','Al-Hasyr','Al-Mumtahanah','As-Saff','Al-Jumu\'ah','Al-Munaafiquun','At-Taghaabun','At-Talaaq','At-Tahriim','Al-Mulk','Al-Qalam','Al-Haaqqah','Al-Ma\'aarij','Nuh','Al-Jinn','Al-Muzzammil','Al-Muddaththir','Al-Qiyamah','Al-Insaan','Al-Mursalaat','An-Naba\'','An-Naazi\'aat','\'Abasa','At-Takwiir','Al-Infitaar','Al-Mutaffifiin','Al-Insyiqaaq','Al-Buruuj','At-Taariq','Al-A\'laa','Al-Ghaasyiyah','Al-Fajr','Al-Balad','Asy-Syams','Al-Lail','Adh-Dhuha','Al-Insyiraah','At-Tiin','Al-\'Alaq','Al-Qadr','Al-Bayyinah','Az-Zalzalah','Al-\'Aadiyaat','Al-Qaari\'ah','At-Takaathur','Al-\'Asr','Al-Humazah','Al-Fiil','Quraisy','Al-Maa\'uun','Al-Kauthar','Al-Kaafiruun','An-Nasr','Al-Masad','Al-Ikhlaas','Al-Falaq','An-Naas'];
+
+    // ══════════════════════════════════════════
+    // STATE GLOBAL
+    // ══════════════════════════════════════════
+    var currentUser = null;
+    var cards = [];          // senarai kad quran semasa
+    var cardIndex = 0;       // kad semasa
+    var isFlipped = false;   // false=Arab, true=Terjemahan
+    var isBusy = false;
+    var isLoading = false;
+
+    var allQuranDrawers = [];    // data dari quran_drawers
+    var quranSurahSemasa = 1;   // surah aktif
+    var quranAyatSemasa = 0;    // ayat terakhir yang diketahui
+
+    // Terskip
+    var terskipCards = [];
+    var terskipIdx = 0;
+    var terskipFlipped = false;
+
+    // Bahagian waqaf dan maksud untuk terskip
+    var terskipWaqafBahagian = [];
+    var terskipWaqafIdx = 0;
+    var terskipMaksudBahagian = [];
+    var terskipMaksudIdx = 0;
+
+    var TERSKIP_MAKSUD_MAX = 300;    
+
+    function pecahMaksud(teks) {
+      if (!teks || teks.length <= TERSKIP_MAKSUD_MAX) return [teks || ''];
+
+      // Simbol yang jadi titik potong — cari yang paling dekat sebelum had
+      var SIMBOL_POTONG = '!#@$%^&*?,..`~';
+
+      var bahagian = [];
+      var i = 0;
+      while (i < teks.length) {
+        var hujung = i + TERSKIP_MAKSUD_MAX;
+        if (hujung >= teks.length) {
+          bahagian.push(teks.slice(i).trim());
+          break;
+        }
+
+        // Cari simbol terdekat sebelum had
+        var potong = -1;
+        for (var j = hujung; j > i; j--) {
+          if (SIMBOL_POTONG.indexOf(teks[j]) !== -1) {
+            potong = j; // kekal simbol di hujung — potong selepas simbol
+            break;
+          }
+        }
+
+        // Kalau tiada simbol jumpa — fallback potong pada ruang
+        if (potong === -1) {
+          potong = teks.lastIndexOf(' ', hujung);
+          if (potong <= i) potong = hujung;
+          bahagian.push(teks.slice(i, potong).trim() + '...');
+          i = potong + 1;
+        } else {
+          // Potong selepas simbol, tambah '...' di hujung
+          bahagian.push(teks.slice(i, potong + 1).trim() + '...');
+          i = potong + 1;
+        }
+      }
+      return bahagian.filter(function(b) { return b; });
+    }
+
+    // onSnapshot unsub
+    var _unsubQuran = null;
+    // Surah yang sedang disubscribe — elak re-subscribe surah sama
+    var _unsubQuranSurah = 0;
+    // Cache kemajuan — elak query berulang dalam session sama
+    var _kemajuanCache = null;
+
+    // ── STATE WAQAF (bahagian ayat) ──
+    var waqafBahagian = [];   // array bahagian teks Arab selepas potong
+    var waqafIdx = 0;         // bahagian semasa
+
+    // ── STATE MAKSUD (bahagian terjemahan) ──
+    var maksudBahagian = [];  // array bahagian terjemahan selepas pecah
+    var maksudIdx = 0;        // bahagian maksud semasa
+
+    // Simbol waqaf yang jadi titik potong
+    // U+06DA=Lazim(wajib), U+06D7=Waqf Al-Lazim(wajib kuat), U+06D6=digalakkan, U+06D8=boleh, U+06DB=Mu'anaqah(pilih yg kedua)
+    var WAQAF_SYMBOLS = ['\u06DA', '\u06D7', '\u06D6', '\u06D8', '\u06DB'];
+
+    // Untuk Mu'anaqah (U+06DB) — GABUNG bahagian pertama dan kedua
+    // Sebab: pembaca perlu baca dari awal hingga bintang KEDUA (pilihan waqaf)
+    // Caranya: kalau jumpa dua U+06DB berturutan, gabungkan teks kedua-duanya
+    // Contoh: [A ۛ] [B ۛ] → [A B ۛ] — baca terus dari A sampai bintang kedua
+    function filterMuanaqah(bahagian) {
+      var hasil = [];
+      var i = 0;
+      while (i < bahagian.length) {
+        if (
+          bahagian[i].simbol === '\u06DB' &&
+          i + 1 < bahagian.length &&
+          bahagian[i + 1].simbol === '\u06DB'
+        ) {
+          // Gabung teks pertama + teks kedua — baca hingga bintang kedua
+          var teksGabung = bahagian[i].teks + ' ' + bahagian[i + 1].teks;
+          hasil.push({ teks: teksGabung.trim(), simbol: '\u06DB' });
+          i += 2; // skip kedua-dua, dah digabung
+        } else {
+          hasil.push(bahagian[i]);
+          i++;
+        }
+      }
+      return hasil;
+    }
+
+    // Potong teks Arab pada simbol waqaf
+    // Pulangkan array objek { teks, simbol } — simbol ialah simbol waqaf di hujung bahagian (atau '')
+    function potongWaqaf(teks) {
+      if (!teks || !teks.trim()) return [{ teks: teks, simbol: '' }];
+      var hasil = [];
+      var semasa = '';
+      for (var i = 0; i < teks.length; i++) {
+        if (WAQAF_SYMBOLS.indexOf(teks[i]) !== -1) {
+          var trim = semasa.trim();
+          if (trim) hasil.push({ teks: trim, simbol: teks[i] });
+          semasa = '';
+        } else {
+          semasa += teks[i];
+        }
+      }
+      var baki = semasa.trim();
+      if (baki) hasil.push({ teks: baki, simbol: '' });
+      return hasil.length ? hasil : [{ teks: teks, simbol: '' }];
+    }
+    // ══════════════════════════════════════════
+    // HELPER
+    // ══════════════════════════════════════════
+    function showScreen(id) {
+      var screens = document.querySelectorAll('.screen');
+      for (var i = 0; i < screens.length; i++) screens[i].className = 'screen';
+      var el = document.getElementById(id);
+      if (el) el.className = 'screen active';
+    }
+
+    function setText(id, t) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = t || '';
+    }
+
+    // ── LOADING FASA HELPER ──
+    // Papar fasa semasa di skrin login — hilang bila skrin tukar
+    function setFasa(teks) {
+      var el = document.getElementById('loading-fasa');
+      if (!el) return;
+      if (teks === null) {
+        el.className = '';
+        el.textContent = '';
+      } else {
+        el.className = 'show';
+        el.textContent = teks || '';
+      }
+    }
+
+    // ── SCROLL CHECK ──
+    // Semak sama ada kotak overflow selepas set teks
+    // Kalau overflow → aktifkan scroll bar, kalau tidak → sorok
+    function semakSkrol(boxId) {
+      setTimeout(function() {
+        var box = document.getElementById(boxId);
+        if (!box) return;
+        if (box.scrollHeight > box.clientHeight) {
+          box.classList.add('boleh-skrol');
+        } else {
+          box.classList.remove('boleh-skrol');
+        }
+      }, 50); // tunggu render selesai
+    }
+
+    function setMainText(txt, gaya) {
+      // gaya: 'arab' | 'terjemah' | 'biasa'
+      var el = document.getElementById('main-text');
+      if (!el) return;
+      el.textContent = txt || '';
+      if (gaya === 'arab') {
+        el.className = 'arab-text';
+      } else if (gaya === 'terjemah') {
+        el.className = 'terjemah-text';
+      } else {
+        el.className = 'biasa-text';
+      }
+      // Semak overflow selepas set teks
+      semakSkrol('counter-box');
+    }
+
+    // ══════════════════════════════════════════
+    // PARSE TITLE LACI
+    // Format: "3. Ali-'Imran Ayat 45"
+    // ══════════════════════════════════════════
+    // parseLaciQuran tidak diperlukan lagi — title dijana hardcode oleh app
+    // field surahNum dan ayatNum digunakan terus dari Firestore
+
+    // ══════════════════════════════════════════
+    // BACA KEMAJUAN — BANDINGKAN PHONE & KINDLE
+    // Ambil yang lebih baru antara quran_progress_log
+    // dan kindle_quran/current
+    // ══════════════════════════════════════════
+    function loadKemajuanTerkini(paksa) {
+      if (!currentUser) return Promise.resolve({ surah: 1, ayat: 0 });
+      // Guna cache kalau ada dan tidak dipaksa refresh
+      if (!paksa && _kemajuanCache) return Promise.resolve(_kemajuanCache);
+
+      var uid = currentUser.uid;
+
+      // Baca kedua-dua serentak
+      // Guna orderBy + limit(1) — elak download semua log
+      var pPhone = db.collection('users').doc(uid)
+        .collection('quran_progress_log')
+        .orderBy('savedAt', 'desc')
+        .limit(1)
+        .get()
+        .then(function(snap) {
+          if (snap.empty) return null;
+          return snap.docs[0].data();
+        })
+        .catch(function() { return null; });
+
+      var pKindle = db.collection('users').doc(uid)
+        .collection('kindle_quran').doc('current')
+        .get()
+        .then(function(snap) {
+          if (!snap.exists) return null;
+          return snap.data();
+        })
+        .catch(function() { return null; });
+
+      return Promise.all([pPhone, pKindle]).then(function(res) {
+        var dataPhone = res[0];   // { surah, ayat, savedAt }
+        var dataKindle = res[1];  // { surahNum, ayatNum, savedAt }
+
+        // Normalize ke format sama
+        var phone = dataPhone ? {
+          surah: dataPhone.surah || 1,
+          ayat: dataPhone.ayat || 0,
+          savedAt: dataPhone.savedAt || 0
+        } : null;
+
+        var kindle = dataKindle ? {
+          surah: dataKindle.surahNum || 1,
+          ayat: dataKindle.ayatNum || 0,
+          savedAt: dataKindle.savedAt || 0
+        } : null;
+
+        // Kalau tiada kedua-dua — mula dari awal
+        if (!phone && !kindle) {
+          _kemajuanCache = { surah: 1, ayat: 0 };
+          return _kemajuanCache;
+        }
+        if (!phone) {
+          _kemajuanCache = kindle;
+          return _kemajuanCache;
+        }
+        if (!kindle) {
+          _kemajuanCache = phone;
+          return _kemajuanCache;
+        }
+
+        // Bandingkan savedAt — ambil yang lebih baru
+        var hasil = (kindle.savedAt >= phone.savedAt) ? kindle : phone;
+        _kemajuanCache = hasil;
+        return hasil;
+      });
+    }
+
+    // ══════════════════════════════════════════
+    // SIMPAN KEMAJUAN KE kindle_quran/current
+    // (Phone akan baca ini bila ON Quran)
+    // ══════════════════════════════════════════
+    function simpanKindleCurrent(surahNum, ayatNum) {
+      if (!currentUser) return;
+      db.collection('users').doc(currentUser.uid)
+        .collection('kindle_quran').doc('current')
+        .set({
+          surahNum: surahNum,
+          ayatNum: ayatNum,
+          savedAt: Date.now()
+        })
+        .catch(function() {});
+    }
+
+    // ══════════════════════════════════════════
+    // SUBSCRIBE QURAN DRAWERS (satu surah sahaja)
+    // ══════════════════════════════════════════
+    function subscribeQuranDrawers(cbSelepasData) {
+      if (!currentUser) { cbSelepasData && cbSelepasData(); return; }
+
+      var surahTarget = quranSurahSemasa;
+
+      // Kalau surah sama dan listener dah aktif — guna data sedia ada
+      if (_unsubQuran && _unsubQuranSurah === surahTarget) {
+        cbSelepasData && cbSelepasData();
+        return;
+      }
+
+      // Unsub listener lama kalau ada (tukar surah)
+      if (_unsubQuran) {
+        _unsubQuran();
+        _unsubQuran = null;
+      }
+
+      _unsubQuranSurah = surahTarget;
+
+      // Query guna surahNum — field hardcode, konsisten, tiada isu nama/format
+      _unsubQuran = db.collection('users').doc(currentUser.uid)
+        .collection('quran_drawers')
+        .where('surahNum', '==', surahTarget)
+        .onSnapshot(function(snap) {
+          allQuranDrawers = [];
+          snap.forEach(function(d) {
+            var x = d.data(); x.id = d.id;
+            allQuranDrawers.push(x);
+          });
+          // Panggil callback sekali sahaja bila data pertama tiba
+          if (cbSelepasData) { var cb = cbSelepasData; cbSelepasData = null; cb(); }
+        }, function() { allQuranDrawers = []; cbSelepasData && cbSelepasData(); });
+    }
+
+    // ══════════════════════════════════════════
+    // BINA KAD QURAN DARI DATA FIRESTORE
+    // ══════════════════════════════════════════
+    function rebuildQuranCards() {
+      var surahNum = quranSurahSemasa;
+      var surahName = QURAN_SURAH_NAMES[surahNum - 1] || '';
+
+      var activeDrawers = allQuranDrawers
+        .filter(function(d) { return d.surahNum === surahNum; })
+        .sort(function(a, b) { return (a.ayatNum || 0) - (b.ayatNum || 0); });
+
+      if (!activeDrawers.length) {
+        cards = []; cardIndex = 0;
+        setMainText(
+          'Tiada ayat untuk Surah ' + surahNum + '. ' + surahName + '.\nSila semak data di phone.',
+          'biasa'
+        );
+        setText('play-mode', 'QURAN');
+        setText('play-status', 'Tiada data');
+        setText('play-progress', '');
+        return false;
+      }
+
+      cards = [];
+      for (var i = 0; i < activeDrawers.length; i++) {
+        var d = activeDrawers[i];
+        if (!d.surahNum || !d.ayatNum) continue; // skip laci tanpa field hardcode
+        // Title dijana hardcode — konsisten, tiada isu nama/apostrof
+        var tajukHardcode = d.surahNum + '. ' + QURAN_SURAH_NAMES[d.surahNum - 1] + ' Ayat ' + d.ayatNum;
+        cards.push({
+          arab: (d.arab || d.zikir || '').trim() || '(Kosong)', // guna arab, fallback zikir
+          maksud: (d.maksud || '').trim(),
+          title: tajukHardcode,
+          surahNum: d.surahNum,
+          ayatNum: d.ayatNum,
+          drawerId: d.id,
+          isTamat: false,
+          isTamatSurah: false
+        });
+      }
+
+      // Kad tamat surah
+      cards.push({
+        arab: '',
+        maksud: '',
+        title: 'TAMAT',
+        surahNum: surahNum,
+        ayatNum: 0,
+        drawerId: null,
+        isTamat: true,
+        isTamatSurah: true,
+        pesanTamat: 'Surah ' + surahNum + '. ' + surahName + ' selesai.\nTekan SETERUSNYA untuk surah seterusnya.'
+      });
+
+      // Cari kedudukan berdasarkan ayat terakhir yang diketahui
+      var savedIdx = 0;
+      if (quranAyatSemasa > 0) {
+        for (var j = 0; j < cards.length; j++) {
+          if (cards[j].ayatNum && cards[j].ayatNum <= quranAyatSemasa) {
+            savedIdx = j;
+          }
+        }
+        // Terus ke ayat yang disimpan — sama seperti phone, tiada maju satu
+      }
+      cardIndex = savedIdx;
+      // Init bahagian waqaf untuk kad pertama
+      if (cards.length > 0 && !cards[cardIndex].isTamat) {
+        waqafBahagian = filterMuanaqah(potongWaqaf(cards[cardIndex].arab));
+      } else {
+        waqafBahagian = [];
+      }
+      waqafIdx = 0;
+      maksudBahagian = [];
+      maksudIdx = 0;
+      return true;
+    }
+
+    // ══════════════════════════════════════════
+    // RENDER KAD SEMASA
+    // ══════════════════════════════════════════
+    function renderCard() {
+      if (!cards.length) {
+        setMainText('Tiada kad', 'biasa');
+        setText('side-label', '');
+        setText('play-progress', '');
+        return;
+      }
+      if (cardIndex >= cards.length) {
+        setMainText('Selesai', 'biasa');
+        setText('side-label', '');
+        setText('play-progress', '');
+        return;
+      }
+
+      var c = cards[cardIndex];
+
+      // Kad tamat surah
+      if (c.isTamat) {
+        setText('play-mode', 'TAMAT SURAH');
+        setText('side-label', '');
+        setMainText(c.pesanTamat || 'Selesai.', 'biasa');
+        setText('play-progress', '');
+        setText('play-meta', '');
+        return;
+      }
+
+      // Bilangan ayat dalam surah ini (bukan termasuk kad tamat)
+      var totalAyat = cards.filter(function(x) { return !x.isTamat; }).length;
+
+      setText('play-mode', c.title);
+      setText('play-progress', 'Ayat ' + c.ayatNum + ' / ' + totalAyat);
+      setText('play-meta', '');
+      setText('play-err', '');
+
+      if (!isFlipped) {
+        // Papar Arab — ikut bahagian waqaf
+        setText('side-label', 'ARAB');
+        var arabPapar, simbolPapar;
+        if (waqafBahagian.length > 1) {
+          // Ambil teks bahagian + tambah semula simbol waqaf di hujung
+          // Simbol dibuang masa potong, ditambah semula di sini supaya
+          // elak bug rendering (ekor cacat) bila simbol kekal dalam teks asal
+          simbolPapar = waqafBahagian[waqafIdx].simbol || '';
+          arabPapar = waqafBahagian[waqafIdx].teks + (simbolPapar ? ' ' + simbolPapar : '');
+        } else {
+          arabPapar = c.arab;
+        }
+        setMainText(arabPapar, 'arab');
+        // Progress: tunjuk bahagian + simbol waqaf kalau ada lebih dari satu
+        if (waqafBahagian.length > 1) {
+          var simbolSemasa = waqafBahagian[waqafIdx].simbol || '';
+          var simbolLabel = simbolSemasa ? ' ' + simbolSemasa : '';
+          setText('play-progress', 'Ayat ' + c.ayatNum + simbolLabel + ' · ' + (waqafIdx + 1) + '/' + waqafBahagian.length);
+        } else {
+          setText('play-progress', 'Ayat ' + c.ayatNum + ' / ' + totalAyat);
+        }
+        document.getElementById('btn-terskip').className = 'btn-sm';
+      } else {
+        // Papar terjemahan — ikut bahagian maksud
+        setText('side-label', 'TERJEMAHAN');
+        var maksudPapar = maksudBahagian.length > 1
+          ? maksudBahagian[maksudIdx]
+          : (c.maksud || '(Tiada terjemahan)');
+        setMainText(maksudPapar, 'terjemah');
+        if (maksudBahagian.length > 1) {
+          setText('play-progress', 'Ayat ' + c.ayatNum + ' · Maksud ' + (maksudIdx + 1) + '/' + maksudBahagian.length);
+        } else {
+          setText('play-progress', 'Ayat ' + c.ayatNum + ' / ' + totalAyat);
+        }
+        document.getElementById('btn-terskip').className = 'btn-sm';
+      }
+    }
+
+    // ══════════════════════════════════════════
+    // NEXT CARD — logik utama
+    // ══════════════════════════════════════════
+    function nextCard() {
+      if (isBusy) return;
+      if (!cards.length || cardIndex >= cards.length) return;
+
+      var c = cards[cardIndex];
+
+      // ── KAD TAMAT SURAH ──
+      if (c.isTamat && c.isTamatSurah) {
+        var surahBaru = quranSurahSemasa + 1;
+        if (surahBaru > 114) {
+          setMainText('Tahniah! Al-Quran selesai. SubhanAllah.', 'biasa');
+          setText('side-label', '');
+          return;
+        }
+        // Maju ke surah seterusnya
+        quranSurahSemasa = surahBaru;
+        quranAyatSemasa = 0;
+        isFlipped = false;
+        simpanKindleCurrent(surahBaru, 1);
+        setText('play-status', 'Memuat Surah ' + surahBaru + '...');
+        setText('play-mode', '—');
+        setMainText('', 'biasa');
+
+        // Subscribe surah baru — unsub lama berlaku dalam subscribeQuranDrawers
+        subscribeQuranDrawers(function() {
+          var ok = rebuildQuranCards();
+          if (ok) {
+            setText('play-status', 'QURAN · ' + quranSurahSemasa + '. ' + QURAN_SURAH_NAMES[quranSurahSemasa - 1]);
+          }
+          renderCard();
+        });
+        return;
+      }
+
+      // ── KAD BIASA — TAP 1: Papar bahagian waqaf seterusnya atau terjemahan ──
+      if (!isFlipped) {
+        // Ada bahagian waqaf seterusnya — papar bahagian tu dulu
+        if (waqafBahagian.length > 1 && waqafIdx < waqafBahagian.length - 1) {
+          waqafIdx++;
+          renderCard();
+          return;
+        }
+        // Habis semua bahagian waqaf — tunjuk terjemahan
+        isFlipped = true;
+        maksudBahagian = pecahMaksud(c.maksud || '(Tiada terjemahan)');
+        maksudIdx = 0;
+        renderCard();
+        return;
+      }
+
+      // ── KAD BIASA — TAP 2 (selepas terjemahan): ada bahagian maksud seterusnya ──
+      if (maksudBahagian.length > 1 && maksudIdx < maksudBahagian.length - 1) {
+        maksudIdx++;
+        renderCard();
+        return;
+      }
+
+      // ── Habis semua bahagian maksud — maju ke ayat seterusnya ──
+      var ayatSelesai = c.ayatNum || 0;
+      isFlipped = false;
+      maksudBahagian = [];
+      maksudIdx = 0;
+      cardIndex++;
+
+      // Reset bahagian waqaf untuk ayat baru
+      if (cardIndex < cards.length && !cards[cardIndex].isTamat) {
+        waqafBahagian = filterMuanaqah(potongWaqaf(cards[cardIndex].arab));
+      } else {
+        waqafBahagian = [];
+      }
+      waqafIdx = 0;
+
+      // Simpan kemajuan setiap ayat — Kindle beroperasi secara linear tanpa konflik mod
+      // +1 supaya kemajuan tunjuk ayat semasa, bukan ayat yang baru selesai
+      // Pengecualian: ayat 1 — supaya masuk surah baru sentiasa mula dari ayat 1
+      if (ayatSelesai > 0) {
+        quranAyatSemasa = ayatSelesai;
+        var simpanAyat = ayatSelesai === 1 ? 1 : ayatSelesai + 1;
+        simpanKindleCurrent(quranSurahSemasa, simpanAyat);
+      }
+
+      renderCard();
+    }
+
+    // ══════════════════════════════════════════
+    // TERSKIP — semak ayat-ayat lepas
+    // ══════════════════════════════════════════
+    function bukaTerskip() {
+      if (!cards.length || cardIndex <= 0) {
+        setText('play-err', 'Tiada ayat sebelum ini.');
+        setTimeout(function() { setText('play-err', ''); }, 2000);
+        return;
+      }
+
+      // Ambil sehingga 5 kad sebelum cardIndex, skip kad isTamat
+      var mula = Math.max(0, cardIndex - 5);
+      terskipCards = cards.slice(mula, cardIndex).filter(function(x) { return !x.isTamat; });
+
+      if (!terskipCards.length) {
+        setText('play-err', 'Tiada ayat untuk disemak.');
+        setTimeout(function() { setText('play-err', ''); }, 2000);
+        return;
+      }
+
+      terskipIdx = 0;
+      terskipFlipped = false;
+      // Init bahagian waqaf dan maksud untuk kad pertama
+      terskipWaqafBahagian = filterMuanaqah(potongWaqaf(terskipCards[0].arab));
+      terskipWaqafIdx = 0;
+      terskipMaksudBahagian = pecahMaksud(terskipCards[0].maksud || '(Tiada terjemahan)');
+      terskipMaksudIdx = 0;
+      renderTerskip();
+      document.getElementById('terskip-overlay').className = 'show';
+    }
+
+    function tutupTerskip() {
+      terskipCards = [];
+      terskipIdx = 0;
+      terskipFlipped = false;
+      terskipWaqafBahagian = [];
+      terskipWaqafIdx = 0;
+      terskipMaksudBahagian = [];
+      terskipMaksudIdx = 0;
+      document.getElementById('terskip-overlay').className = '';
+      // Render balik kad utama
+      var surahLabel = quranSurahSemasa + '. ' + QURAN_SURAH_NAMES[quranSurahSemasa - 1];
+      setText('play-status', 'QURAN · ' + surahLabel);
+      renderCard();
+    }
+
+    function renderTerskip() {
+      if (!terskipCards.length) return;
+      var t = terskipCards[terskipIdx];
+      var total = terskipCards.length;
+      var terskipTextEl = document.getElementById('terskip-text');
+
+      if (!terskipFlipped) {
+        // Papar Arab ikut bahagian waqaf
+        // Simbol ditambah semula oleh app — elak bug rendering ekor cacat
+        var arabPapar, simbolSemasa, simbolLabel;
+        if (terskipWaqafBahagian.length > 1) {
+          simbolSemasa = terskipWaqafBahagian[terskipWaqafIdx].simbol || '';
+          simbolLabel = simbolSemasa ? ' ' + simbolSemasa : '';
+          arabPapar = terskipWaqafBahagian[terskipWaqafIdx].teks + (simbolSemasa ? ' ' + simbolSemasa : '');
+        } else {
+          arabPapar = t.arab;
+          simbolSemasa = '';
+          simbolLabel = '';
+        }
+
+        // Progress: ayat X · bahagian Y/Z
+        var progressStr = terskipWaqafBahagian.length > 1
+          ? 'Ayat ' + t.ayatNum + simbolLabel + ' · ' + (terskipWaqafIdx + 1) + '/' + terskipWaqafBahagian.length
+          : 'Ayat ' + t.ayatNum + ' · ' + (terskipIdx + 1) + '/' + total;
+
+        setText('terskip-progress', (terskipIdx + 1) + '/' + total);
+        setText('terskip-title', t.title || 'QURAN');
+        setText('terskip-side', 'ARAB');
+        setText('terskip-ayat', progressStr);
+        terskipTextEl.textContent = arabPapar || '';
+        terskipTextEl.className = 'arab-text';
+        document.getElementById('btn-terskip-flip').textContent = 'Maksud';
+        document.getElementById('btn-terskip-flip').className = 'btn-sm';
+        semakSkrol('terskip-box');
+      } else {
+        // Papar maksud ikut bahagian
+        var maksudPapar = terskipMaksudBahagian.length > 1
+          ? terskipMaksudBahagian[terskipMaksudIdx]
+          : (t.maksud || '(Tiada terjemahan)');
+        var maksudProgress = terskipMaksudBahagian.length > 1
+          ? 'Ayat ' + t.ayatNum + ' · Maksud ' + (terskipMaksudIdx + 1) + '/' + terskipMaksudBahagian.length
+          : 'Ayat ' + t.ayatNum + ' · ' + (terskipIdx + 1) + '/' + total;
+
+        setText('terskip-progress', (terskipIdx + 1) + '/' + total);
+        setText('terskip-title', t.title || 'QURAN');
+        setText('terskip-side', 'TERJEMAHAN');
+        setText('terskip-ayat', maksudProgress);
+        terskipTextEl.textContent = maksudPapar;
+        terskipTextEl.className = 'terjemah-text';
+        document.getElementById('btn-terskip-flip').textContent = 'Arab';
+        document.getElementById('btn-terskip-flip').className = 'btn-sm on';
+        semakSkrol('terskip-box');
+      }
+    }
+
+    // ══════════════════════════════════════════
+    // START QURAN — load data & papar
+    // ══════════════════════════════════════════
+    function startQuran() {
+      if (isLoading) return;
+      isLoading = true;
+      isFlipped = false;
+      terskipCards = []; terskipIdx = 0;
+      setText('play-err', '');
+
+      // Fasa 1 — mula (di skrin login, sebelum tukar skrin)
+      setFasa('[1/4] Membuka Quran...');
+
+      // Fasa 2 — tunggu font Arab siap dulu sebelum tukar skrin
+      document.fonts.ready.then(function() {
+        setFasa('[2/4] Font Arab siap...');
+        showScreen('screen-play');
+        setText('play-status', 'Memuat Quran...');
+        setFasa(null); // hilang lepas tukar skrin
+
+        // Fasa 3 — baca kemajuan dari Firestore
+        setText('play-status', '[3/4] Membaca kemajuan...');
+        loadKemajuanTerkini().then(function(kemajuan) {
+          quranSurahSemasa = kemajuan.surah || 1;
+          quranAyatSemasa = kemajuan.ayat || 0;
+
+          // Fasa 4 — load ayat surah semasa
+          setText('play-status', '[4/4] Memuatkan ayat...');
+          subscribeQuranDrawers(function() {
+            var ok = rebuildQuranCards();
+            if (ok) {
+              var surahLabel = quranSurahSemasa + '. ' + QURAN_SURAH_NAMES[quranSurahSemasa - 1];
+              setText('play-status', 'QURAN · ' + surahLabel);
+            }
+            isLoading = false;
+            renderCard();
+          });
+
+        }).catch(function(e) {
+          isLoading = false;
+          setText('play-status', '—');
+          setText('play-err', 'Gagal muat kemajuan: ' + (e.message || ''));
+        });
+      });
+    }
+
+    // ══════════════════════════════════════════
+    // LOGIN
+    // ══════════════════════════════════════════
+    function cubaLoginPin() {
+      var pin = document.getElementById('pin-input').value.trim();
+      if (!pin || !/^\d{4,6}$/.test(pin)) {
+        setText('login-msg', 'PIN mesti 4-6 digit'); return;
+      }
+      setText('login-msg', 'Mengesahkan...');
+      document.getElementById('btn-login').disabled = true;
+      auth.signInWithEmailAndPassword(ADMIN_EMAIL, pin)
+        .then(function() {
+          document.getElementById('pin-input').value = '';
+          setText('login-msg', '');
+        })
+        .catch(function(e) {
+          document.getElementById('btn-login').disabled = false;
+          if (
+            e.code === 'auth/wrong-password' ||
+            e.code === 'auth/invalid-credential' ||
+            e.code === 'auth/invalid-login-credentials'
+          ) {
+            setText('login-msg', 'PIN salah');
+          } else if (e.code === 'auth/user-not-found') {
+            setText('login-msg', 'PIN belum setup di phone');
+          } else {
+            setText('login-msg', e.message || e.code);
+          }
+        });
+    }
+
+    // ══════════════════════════════════════════
+    // EVENT LISTENERS
+    // ══════════════════════════════════════════
+
+    // Login
+    document.getElementById('btn-login').onclick = cubaLoginPin;
+    document.getElementById('pin-input').onkeydown = function(e) {
+      if (e.key === 'Enter') cubaLoginPin();
+    };
+
+    // Play screen
+    document.getElementById('btn-next').onclick = nextCard;
+
+    document.getElementById('btn-back-menu').onclick = function() {
+      showScreen('screen-menu');
+    };
+
+    document.getElementById('btn-terskip').onclick = function() {
+      bukaTerskip();
+    };
+
+    // ── LACI BUTTON ──
+    document.getElementById('btn-laci').onclick = function() {
+      renderLaciQuran();
+      showScreen('screen-laci');
+    };
+
+    document.getElementById('btn-laci-balik').onclick = function() {
+      showScreen('screen-play');
+    };
+
+    document.getElementById('btn-mini-balik').onclick = function() {
+      if (miniLoading) {
+        // Cancel load — tunjuk status dulu sebelum balik
+        setText('mini-status', 'Dibatalkan.');
+        var miniEl = document.getElementById('mini-text');
+        miniEl.className = 'biasa-text';
+        miniEl.textContent = '';
+        // Block button seketika
+        document.getElementById('btn-mini-balik').disabled = true;
+        setTimeout(function() {
+          document.getElementById('btn-mini-balik').disabled = false;
+          if (_unsubMini) { _unsubMini(); _unsubMini = null; }
+          miniLoading = false;
+          miniCards = [];
+          // Enable semula senarai
+          var items = document.querySelectorAll('#laci-surah-list div');
+          items.forEach(function(el) { el.style.pointerEvents = ''; el.style.opacity = ''; });
+          showScreen('screen-laci');
+        }, 600);
+        return;
+      }
+      if (_unsubMini) { _unsubMini(); _unsubMini = null; }
+      miniCards = [];
+      showScreen('screen-laci');
+    };
+
+    document.getElementById('btn-mini-next').onclick = function() {
+      nextMiniCard();
+    };
+
+    document.getElementById('btn-mini-flip').onclick = function() {
+      if (!miniCards.length) return;
+      miniFlipped = !miniFlipped;
+      miniMaksudIdx = 0;
+      renderMiniCard();
+    };
+
+    document.getElementById('btn-mini-terskip').onclick = function() {
+      bukaTerskipMini();
+    };
+
+    document.getElementById('btn-terskip-mini-tutup').onclick = function() {
+      tutupTerskipMini();
+    };
+
+    document.getElementById('btn-terskip-mini-flip').onclick = function() {
+      if (!terskipMiniCards.length) return;
+      terskipMiniFlipped = !terskipMiniFlipped;
+      terskipMiniWaqafIdx = 0;
+      terskipMiniMaksudIdx = 0;
+      renderTerskipMini();
+    };
+
+    document.getElementById('btn-terskip-mini-next').onclick = function() {
+      if (!terskipMiniFlipped) {
+        if (terskipMiniWaqafBahagian.length > 1 && terskipMiniWaqafIdx < terskipMiniWaqafBahagian.length - 1) {
+          terskipMiniWaqafIdx++;
+          renderTerskipMini();
+          return;
+        }
+      } else {
+        if (terskipMiniMaksudBahagian.length > 1 && terskipMiniMaksudIdx < terskipMiniMaksudBahagian.length - 1) {
+          terskipMiniMaksudIdx++;
+          renderTerskipMini();
+          return;
+        }
+      }
+      terskipMiniIdx++;
+      if (terskipMiniIdx >= terskipMiniCards.length) {
+        tutupTerskipMini();
+        return;
+      }
+      terskipMiniFlipped = false;
+      terskipMiniWaqafBahagian = filterMuanaqah(potongWaqaf(terskipMiniCards[terskipMiniIdx].arab));
+      terskipMiniWaqafIdx = 0;
+      terskipMiniMaksudBahagian = pecahMaksud(terskipMiniCards[terskipMiniIdx].maksud || '(Tiada terjemahan)');
+      terskipMiniMaksudIdx = 0;
+      renderTerskipMini();
+    };
+
+    document.getElementById('btn-mini-reset').onclick = function() {    
+      if (!miniCards.length) return;
+      // Tunjuk overlay PIN
+      document.getElementById('mini-reset-pin').value = '';
+      setText('mini-reset-msg', '');
+      document.getElementById('mini-reset-overlay').style.display = 'block';
+      setTimeout(function() { document.getElementById('mini-reset-pin').focus(); }, 100);
+    };
+
+    document.getElementById('mini-reset-batal').onclick = function() {
+      document.getElementById('mini-reset-overlay').style.display = 'none';
+      document.getElementById('mini-reset-pin').value = '';
+      setText('mini-reset-msg', '');
+    };
+
+    document.getElementById('mini-reset-ok').onclick = function() {
+      var pin = document.getElementById('mini-reset-pin').value.trim();
+      if (!pin || !/^\d{4,6}$/.test(pin)) {
+        setText('mini-reset-msg', 'PIN mesti 4-6 digit'); return;
+      }
+      setText('mini-reset-msg', 'Mengesahkan...');
+      document.getElementById('mini-reset-ok').disabled = true;
+      auth.signInWithEmailAndPassword(ADMIN_EMAIL, pin)
+        .then(function() {
+          document.getElementById('mini-reset-ok').disabled = false;
+          document.getElementById('mini-reset-overlay').style.display = 'none';
+          document.getElementById('mini-reset-pin').value = '';
+          setText('mini-reset-msg', '');
+          // Reset ke ayat 1
+          miniIdx = 0;
+          miniFlipped = false;
+          miniMaksudBahagian = [];
+          miniMaksudIdx = 0;
+          miniWaqafBahagian = filterMuanaqah(potongWaqaf(miniCards[0].arab));
+          miniWaqafIdx = 0;
+          simpanMiniProgress(0);
+          document.getElementById('btn-mini-next').textContent = 'SETERUSNYA';
+          renderMiniCard();
+        })
+        .catch(function() {
+          document.getElementById('mini-reset-ok').disabled = false;
+          setText('mini-reset-msg', 'PIN salah');
+        });
+    };
+
+    document.getElementById('mini-reset-pin').onkeydown = function(e) {
+      if (e.key === 'Enter') document.getElementById('mini-reset-ok').click();
+    };
+
+    // Terskip overlay
+    document.getElementById('btn-terskip-next').onclick = function() {
+      if (!terskipFlipped) {
+        // Arab — ada bahagian waqaf seterusnya
+        if (terskipWaqafBahagian.length > 1 && terskipWaqafIdx < terskipWaqafBahagian.length - 1) {
+          terskipWaqafIdx++;
+          renderTerskip();
+          return;
+        }
+      } else {
+        // Maksud — ada bahagian seterusnya
+        if (terskipMaksudBahagian.length > 1 && terskipMaksudIdx < terskipMaksudBahagian.length - 1) {
+          terskipMaksudIdx++;
+          renderTerskip();
+          return;
+        }
+      }
+      // Maju ke ayat seterusnya
+      terskipIdx++;
+      if (terskipIdx >= terskipCards.length) {
+        tutupTerskip();
+        return;
+      }
+      terskipFlipped = false;
+      terskipWaqafBahagian = filterMuanaqah(potongWaqaf(terskipCards[terskipIdx].arab));
+      terskipWaqafIdx = 0;
+      terskipMaksudBahagian = pecahMaksud(terskipCards[terskipIdx].maksud || '(Tiada terjemahan)');
+      terskipMaksudIdx = 0;
+      renderTerskip();
+    };
+
+    document.getElementById('btn-terskip-flip').onclick = function() {
+      if (!terskipCards.length || terskipIdx >= terskipCards.length) return;
+      terskipFlipped = !terskipFlipped;
+      // Reset bahagian ke mula bila flip
+      terskipWaqafIdx = 0;
+      terskipMaksudIdx = 0;
+      renderTerskip();
+    };
+
+    document.getElementById('btn-terskip-tutup').onclick = function() {
+      tutupTerskip();
+    };
+
+    // ══════════════════════════════════════════
+    // LACI — kemajuan + senarai surah
+    // ══════════════════════════════════════════
+    function renderLaciQuran() {
+      // Kemajuan
+      var totalAyat = 6236;
+      var surahNama = QURAN_SURAH_NAMES[quranSurahSemasa - 1] || '';
+      var jumlahAyatSurah = QURAN_SURAH_AYAT[quranSurahSemasa - 1] || 0;
+      var dibaca = 0;
+      // Kira jumlah ayat dibaca (semua surah sebelum + ayat semasa)
+      for (var i = 0; i < quranSurahSemasa - 1; i++) {
+        dibaca += QURAN_SURAH_AYAT[i] || 0;
+      }
+      dibaca += quranAyatSemasa;
+      var bakiSurah = jumlahAyatSurah - quranAyatSemasa;
+      var bakiKhatam = totalAyat - dibaca;
+
+      // Ayat semasa = n+1, kecuali ayat 1 dikecualikan dari formula
+      var ayatSemasa = quranAyatSemasa === 1 ? 1 : quranAyatSemasa + 1;
+      var ayatSelesaiDibaca = quranAyatSemasa === 1 ? 0 : quranAyatSemasa;
+
+      setText('laci-semasa', '📖 Ayat semasa: ' + quranSurahSemasa + '. ' + surahNama + ' — Ayat ' + ayatSemasa + '/' + jumlahAyatSurah);
+      setText('laci-dibaca', '📖 Ayat selesai dibaca dalam surah ini: ' + ayatSelesaiDibaca + '/' + jumlahAyatSurah);
+      setText('laci-baki-surah', '📋 Baki surah ini: ' + bakiSurah + ' ayat');
+      setText('laci-baki-khatam', '📚 Baki khatam: ' + bakiKhatam + ' ayat');
+
+      // Senarai 114 surah
+      var list = document.getElementById('laci-surah-list');
+      list.innerHTML = '';
+      QURAN_SURAH_NAMES.forEach(function(nama, idx) {
+        var num = idx + 1;
+        var jumlah = QURAN_SURAH_AYAT[idx] || 0;
+        var isAktif = num === quranSurahSemasa;
+        var div = document.createElement('div');
+        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;' +
+          'padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer;' +
+          (isAktif ? 'background:#f0f0f0;font-weight:bold;' : '');
+        div.innerHTML = '<span>' + num + '. ' + nama + '</span>' +
+          '<span style="font-size:0.7rem;color:#666;">' + jumlah + ' ayat</span>';
+        div.onclick = function() {
+          bukaMiniSurah(num);
+        };
+        list.appendChild(div);
+      });
+
+      // Scroll ke surah semasa
+      setTimeout(function() {
+        var items = list.children;
+        if (items[quranSurahSemasa - 1]) {
+          items[quranSurahSemasa - 1].scrollIntoView({ block: 'center' });
+        }
+      }, 100);
+    }
+
+    // ══════════════════════════════════════════
+    // MINI — baca surah pilihan
+    // ══════════════════════════════════════════
+    var miniCards = [];
+    var miniIdx = 0;
+    var miniFlipped = false;
+    var miniSurahNum = 0;
+    var miniMaksudBahagian = [];
+    var miniMaksudIdx = 0;
+    var miniWaqafBahagian = [];
+    var miniWaqafIdx = 0;
+    var _unsubMini = null;
+    var miniLoading = false;
+
+    // Terskip mini
+    var terskipMiniCards = [];
+    var terskipMiniIdx = 0;
+    var terskipMiniFlipped = false;
+    var terskipMiniWaqafBahagian = [];
+    var terskipMiniWaqafIdx = 0;
+    var terskipMiniMaksudBahagian = [];
+    var terskipMiniMaksudIdx = 0;
+
+    // Cache surah dalam memori — check dulu sebelum query Firestore
+    // Prinsip: simpan sekali, guna banyak kali. Firestore hanya dipanggil sekali per surah.
+    var miniCache = {}; // { surahNum: [cards array] }
+
+    function bukaMiniSurah(surahNum) {
+      if (miniLoading) return;
+
+      miniSurahNum = surahNum;
+      miniIdx = 0;
+      miniFlipped = false;
+      miniMaksudBahagian = [];
+      miniMaksudIdx = 0;
+      miniWaqafBahagian = [];
+      miniWaqafIdx = 0;
+
+      var surahLabel = surahNum + '. ' + QURAN_SURAH_NAMES[surahNum - 1];
+
+      // ── CHECK CACHE DULU ──
+      // Kalau data surah ni dah ada dalam memori, guna terus — langsung tak sentuh Firestore
+      if (miniCache[surahNum]) {
+        console.log('✅ Cache hit — Surah ' + surahNum + ' dari memori, tiada query Firestore');
+        miniCards = miniCache[surahNum];
+        setText('mini-status', 'Baca kedudukan...');
+        showScreen('screen-mini');
+
+        // Baca lastIndex sahaja — data ayat dah ada dalam cache
+        db.collection('users').doc(currentUser.uid)
+          .collection('countdown_mini').doc(String(surahNum))
+          .get().then(function(doc) {
+            var savedIdx = doc.exists ? (doc.data().lastIndex || 0) : 0;
+            miniIdx = Math.min(savedIdx, Math.max(0, miniCards.length - 1));
+            if (miniCards.length > 0) {
+              miniWaqafBahagian = filterMuanaqah(potongWaqaf(miniCards[miniIdx].arab));
+              miniWaqafIdx = 0;
+            }
+            setText('mini-status', 'MINI · ' + surahLabel);
+            renderMiniCard();
+          }).catch(function() {
+            if (miniCards.length > 0) {
+              miniWaqafBahagian = filterMuanaqah(potongWaqaf(miniCards[0].arab));
+              miniWaqafIdx = 0;
+            }
+            setText('mini-status', 'MINI · ' + surahLabel);
+            renderMiniCard();
+          });
+        return;
+      }
+
+      // ── TIADA CACHE — query Firestore ──
+      miniLoading = true;
+      miniCards = [];
+
+      // Disable senarai semasa load
+      var items = document.querySelectorAll('#laci-surah-list div');
+      items.forEach(function(el) { el.style.pointerEvents = 'none'; el.style.opacity = '0.5'; });
+
+      setText('mini-status', '[1/2] Memuatkan ' + surahLabel + '...');
+      var miniEl = document.getElementById('mini-text');
+      miniEl.className = 'biasa-text';
+      miniEl.textContent = 'Tunggu...';
+      setText('mini-side', '');
+      setText('mini-progress', '');
+      showScreen('screen-mini');
+
+      // Unsub surah mini lama
+      if (_unsubMini) { _unsubMini(); _unsubMini = null; }
+
+      _unsubMini = db.collection('users').doc(currentUser.uid)
+        .collection('quran_drawers')
+        .where('surahNum', '==', surahNum)
+        .onSnapshot(function(snap) {
+          var drawers = [];
+          snap.forEach(function(d) {
+            var x = d.data(); x.id = d.id;
+            drawers.push(x);
+          });
+          drawers.sort(function(a, b) { return (a.ayatNum || 0) - (b.ayatNum || 0); });
+
+          miniCards = drawers.map(function(d) {
+            return {
+              arab: (d.arab || '').trim(),
+              maksud: (d.maksud || '').trim(),
+              surahNum: d.surahNum,
+              ayatNum: d.ayatNum,
+              title: d.surahNum + '. ' + QURAN_SURAH_NAMES[d.surahNum - 1] + ' Ayat ' + d.ayatNum
+            };
+          });
+
+          // Simpan dalam cache — guna semula tanpa query Firestore lagi
+          miniCache[surahNum] = miniCards;
+          console.log('📥 Cache miss — Surah ' + surahNum + ' diload dari Firestore dan disimpan dalam cache');
+
+          var surahLabelMini = surahNum + '. ' + QURAN_SURAH_NAMES[surahNum - 1];
+          setText('mini-status', '[2/2] Baca kedudukan...');
+
+          // Baca lastIndex dari Firestore — sync dengan phone
+          db.collection('users').doc(currentUser.uid)
+            .collection('countdown_mini').doc(String(surahNum))
+            .get().then(function(doc) {
+              var savedIdx = doc.exists ? (doc.data().lastIndex || 0) : 0;
+              miniIdx = Math.min(savedIdx, Math.max(0, miniCards.length - 1));
+
+              if (miniCards.length > 0) {
+                miniWaqafBahagian = filterMuanaqah(potongWaqaf(miniCards[miniIdx].arab));
+                miniWaqafIdx = 0;
+              }
+
+              setText('mini-status', 'MINI · ' + surahLabelMini);
+              miniLoading = false;
+              var items2 = document.querySelectorAll('#laci-surah-list div');
+              items2.forEach(function(el) { el.style.pointerEvents = ''; el.style.opacity = ''; });
+              renderMiniCard();
+            }).catch(function() {
+              if (miniCards.length > 0) {
+                miniWaqafBahagian = filterMuanaqah(potongWaqaf(miniCards[0].arab));
+                miniWaqafIdx = 0;
+              }
+              setText('mini-status', 'MINI · ' + surahLabelMini);
+              miniLoading = false;
+              var items3 = document.querySelectorAll('#laci-surah-list div');
+              items3.forEach(function(el) { el.style.pointerEvents = ''; el.style.opacity = ''; });
+              renderMiniCard();
+            });
+
+        }, function() {
+          miniLoading = false;
+          setText('mini-status', 'Gagal muat surah');
+        });
+    }
+
+    function renderMiniCard() {
+      if (!miniCards.length) {
+        setText('mini-text', '(Tiada ayat)');
+        return;
+      }
+      var c = miniCards[miniIdx];
+      var total = miniCards.length;
+
+      if (!miniFlipped) {
+        setText('mini-side', 'ARAB');
+        var arabPapar, simbolPapar;
+        if (miniWaqafBahagian.length > 1) {
+          simbolPapar = miniWaqafBahagian[miniWaqafIdx].simbol || '';
+          arabPapar = miniWaqafBahagian[miniWaqafIdx].teks + (simbolPapar ? ' ' + simbolPapar : '');
+        } else {
+          arabPapar = c.arab;
+        }
+        var el = document.getElementById('mini-text');
+        el.textContent = arabPapar || '';
+        el.className = 'arab-text';
+        semakSkrol('mini-box');
+        if (miniWaqafBahagian.length > 1) {
+          var simbol = miniWaqafBahagian[miniWaqafIdx].simbol || '';
+          setText('mini-progress', 'Ayat ' + c.ayatNum + (simbol ? ' ' + simbol : '') + ' · ' + (miniWaqafIdx + 1) + '/' + miniWaqafBahagian.length);
+        } else {
+          setText('mini-progress', 'Ayat ' + c.ayatNum + ' · ' + (miniIdx + 1) + '/' + total);
+        }
+        document.getElementById('btn-mini-flip').textContent = 'Maksud';
+      } else {
+        setText('mini-side', 'TERJEMAHAN');
+        var maksudPapar = miniMaksudBahagian.length > 1
+          ? miniMaksudBahagian[miniMaksudIdx]
+          : (c.maksud || '(Tiada terjemahan)');
+        var el2 = document.getElementById('mini-text');
+        el2.textContent = maksudPapar;
+        el2.className = 'terjemah-text';
+        semakSkrol('mini-box');
+        if (miniMaksudBahagian.length > 1) {
+          setText('mini-progress', 'Ayat ' + c.ayatNum + ' · Maksud ' + (miniMaksudIdx + 1) + '/' + miniMaksudBahagian.length);
+        } else {
+          setText('mini-progress', 'Ayat ' + c.ayatNum + ' · ' + (miniIdx + 1) + '/' + total);
+        }
+        document.getElementById('btn-mini-flip').textContent = 'Arab';
+      }
+    }
+
+    function nextMiniCard() {
+      if (!miniCards.length) return;
+      var c = miniCards[miniIdx];
+
+      if (!miniFlipped) {
+        // Ada bahagian waqaf seterusnya
+        if (miniWaqafBahagian.length > 1 && miniWaqafIdx < miniWaqafBahagian.length - 1) {
+          miniWaqafIdx++;
+          renderMiniCard();
+          return;
+        }
+        // Flip ke maksud
+        miniFlipped = true;
+        miniMaksudBahagian = pecahMaksud(c.maksud || '(Tiada terjemahan)');
+        miniMaksudIdx = 0;
+        renderMiniCard();
+        return;
+      }
+
+      // Ada bahagian maksud seterusnya
+      if (miniMaksudBahagian.length > 1 && miniMaksudIdx < miniMaksudBahagian.length - 1) {
+        miniMaksudIdx++;
+        renderMiniCard();
+        return;
+      }
+
+      // Maju ke ayat seterusnya
+      miniIdx++;
+      if (miniIdx >= miniCards.length) {
+        // Surah selesai — reset ke ayat pertama
+        miniIdx = 0;
+        miniFlipped = false;
+        miniMaksudBahagian = [];
+        miniMaksudIdx = 0;
+        miniWaqafBahagian = filterMuanaqah(potongWaqaf(miniCards[0].arab));
+        miniWaqafIdx = 0;
+        simpanMiniProgress(0);
+        document.getElementById('btn-mini-next').textContent = 'SETERUSNYA';
+        renderMiniCard();
+        return;
+      }
+      miniFlipped = false;
+      miniMaksudBahagian = [];
+      miniMaksudIdx = 0;
+      miniWaqafBahagian = filterMuanaqah(potongWaqaf(miniCards[miniIdx].arab));
+      miniWaqafIdx = 0;
+      // Simpan lastIndex
+      simpanMiniProgress(miniIdx);
+      renderMiniCard();
+    }
+
+    // ══════════════════════════════════════════
+    // TERSKIP MINI — semak ayat lepas dalam mini countdown
+    // ══════════════════════════════════════════
+    function bukaTerskipMini() {
+      if (!miniCards.length || miniIdx <= 0) return;
+
+      var mula = Math.max(0, miniIdx - 5);
+      terskipMiniCards = miniCards.slice(mula, miniIdx).filter(function(x) { return x.arab; });
+
+      if (!terskipMiniCards.length) return;
+
+      terskipMiniIdx = 0;
+      terskipMiniFlipped = false;
+      terskipMiniWaqafBahagian = filterMuanaqah(potongWaqaf(terskipMiniCards[0].arab));
+      terskipMiniWaqafIdx = 0;
+      terskipMiniMaksudBahagian = pecahMaksud(terskipMiniCards[0].maksud || '(Tiada terjemahan)');
+      terskipMiniMaksudIdx = 0;
+      renderTerskipMini();
+      document.getElementById('terskip-mini-overlay').style.display = 'flex';
+    }
+
+    function tutupTerskipMini() {
+      terskipMiniCards = [];
+      terskipMiniIdx = 0;
+      terskipMiniFlipped = false;
+      terskipMiniWaqafBahagian = [];
+      terskipMiniWaqafIdx = 0;
+      terskipMiniMaksudBahagian = [];
+      terskipMiniMaksudIdx = 0;
+      document.getElementById('terskip-mini-overlay').style.display = 'none';
+    }
+
+    function renderTerskipMini() {
+      if (!terskipMiniCards.length) return;
+      var t = terskipMiniCards[terskipMiniIdx];
+      var total = terskipMiniCards.length;
+      var el = document.getElementById('terskip-mini-text');
+      var surahLabel = t.surahNum + '. ' + QURAN_SURAH_NAMES[t.surahNum - 1];
+      setText('terskip-mini-title', 'TERSKIP · ' + surahLabel);
+
+      if (!terskipMiniFlipped) {
+        var arabPapar, simbolSemasa, simbolLabel;
+        if (terskipMiniWaqafBahagian.length > 1) {
+          simbolSemasa = terskipMiniWaqafBahagian[terskipMiniWaqafIdx].simbol || '';
+          simbolLabel = simbolSemasa ? ' ' + simbolSemasa : '';
+          arabPapar = terskipMiniWaqafBahagian[terskipMiniWaqafIdx].teks + (simbolSemasa ? ' ' + simbolSemasa : '');
+        } else {
+          arabPapar = t.arab;
+          simbolSemasa = '';
+          simbolLabel = '';
+        }
+        var progressStr = terskipMiniWaqafBahagian.length > 1
+          ? 'Ayat ' + t.ayatNum + simbolLabel + ' · ' + (terskipMiniWaqafIdx + 1) + '/' + terskipMiniWaqafBahagian.length
+          : 'Ayat ' + t.ayatNum + ' · ' + (terskipMiniIdx + 1) + '/' + total;
+
+        setText('terskip-mini-side', 'ARAB');
+        setText('terskip-mini-ayat', progressStr);
+        el.textContent = arabPapar || '';
+        el.className = 'arab-text';
+        document.getElementById('btn-terskip-mini-flip').textContent = 'Maksud';
+        document.getElementById('btn-terskip-mini-flip').className = 'btn-sm';
+        semakSkrol('terskip-mini-box');
+      } else {
+        var maksudPapar = terskipMiniMaksudBahagian.length > 1
+          ? terskipMiniMaksudBahagian[terskipMiniMaksudIdx]
+          : (t.maksud || '(Tiada terjemahan)');
+        var maksudProgress = terskipMiniMaksudBahagian.length > 1
+          ? 'Ayat ' + t.ayatNum + ' · Maksud ' + (terskipMiniMaksudIdx + 1) + '/' + terskipMiniMaksudBahagian.length
+          : 'Ayat ' + t.ayatNum + ' · ' + (terskipMiniIdx + 1) + '/' + total;
+
+        setText('terskip-mini-side', 'TERJEMAHAN');
+        setText('terskip-mini-ayat', maksudProgress);
+        el.textContent = maksudPapar;
+        el.className = 'terjemah-text';
+        document.getElementById('btn-terskip-mini-flip').textContent = 'Arab';
+        document.getElementById('btn-terskip-mini-flip').className = 'btn-sm on';
+        semakSkrol('terskip-mini-box');
+      }
+    }
+
+    function simpanMiniProgress(idx) {    
+      if (!currentUser || !miniSurahNum) return;
+      db.collection('users').doc(currentUser.uid)
+        .collection('countdown_mini').doc(String(miniSurahNum))
+        .set({ lastIndex: idx, updatedAt: Date.now() }, { merge: true })
+        .catch(function(e) { console.log('Gagal simpan mini progress:', e); });
+    }
+
+    function bukaTerskipMini() {
+      // Guna sistem terskip sedia ada dengan data mini
+      if (!miniCards.length) return;
+      var end = Math.min(miniIdx, miniCards.length - 1);
+      var start = Math.max(0, end - 5);
+      terskipCards = miniCards.slice(start, end + 1);
+      if (!terskipCards.length) return;
+      terskipIdx = 0;
+      terskipFlipped = false;
+      terskipWaqafBahagian = filterMuanaqah(potongWaqaf(terskipCards[0].arab));
+      terskipWaqafIdx = 0;
+      terskipMaksudBahagian = pecahMaksud(terskipCards[0].maksud || '(Tiada terjemahan)');
+      terskipMaksudIdx = 0;
+      renderTerskip();
+      document.getElementById('terskip-overlay').className = 'show';
+    }
+
+
+    // ══════════════════════════════════════════
+    // TASBIH / DOA / HADIS / WIRID / SOLAT
+    // ══════════════════════════════════════════
+    /* Nilai default target harian (sama dengan app pertama) */
+    var MODE_DAILY_DEFAULTS = { tasbih: 10000, doa: 1000, hadis: 10, wirid: 100, solat: 33 };
+    var MODE_META = {
+      tasbih: { tag: 'TASBIH', tap: 'TAP — ISTIGFAR', tasbihColl: 'tasbih' },
+      wirid:  { tag: '🔄 WIRID', tap: 'TAP — BACA WIRID', katTitle: 'Pilih Waktu Wirid', timesColl: 'routine_times', drawersColl: 'routine_drawers', tasbihColl: 'rutin_tasbih', fallbackKat: 'Wirid' },
+      doa:    { tag: '🤲 DOA', tap: 'TAP — BACA DOA', katTitle: 'Pilih Kategori Doa', timesColl: 'doa_times', drawersColl: 'doa_drawers', tasbihColl: 'doa_tasbih', fallbackKat: 'Doa' },
+      hadis:  { tag: '📚 HADIS', tap: 'TAP — BACA HADIS', katTitle: 'Pilih Kitab/Bab Hadis', timesColl: 'hadis_times', drawersColl: 'hadis_drawers', tasbihColl: 'hadis_tasbih', fallbackKat: 'Hadis' },
+      solat:  { tag: '🕌 SOLAT', tap: 'TAP — BACA SOLAT', katTitle: 'Pilih Kategori Solat', timesColl: 'solat_times', drawersColl: 'solat_drawers', tasbihColl: 'solat_tasbih', fallbackKat: 'Solat' }
+    };
+    function modeMeta(mode) { return MODE_META[mode || currentMode] || MODE_META.tasbih; }
+    function modeTimes(mode) {
+      mode = mode || currentMode;
+      if (mode === 'wirid') return allWiridTimes;
+      if (mode === 'solat') return allSolatTimes;
+      if (mode === 'hadis') return allHadisTimes;
+      return allDoaTimes;
+    }
+    function modeDrawers(mode) {
+      mode = mode || currentMode;
+      if (mode === 'wirid') return allWiridDrawers;
+      if (mode === 'solat') return allSolatDrawers;
+      if (mode === 'hadis') return allHadisDrawers;
+      return allDoaDrawers;
+    }
+
+    /* ══════════════════════════════════════════
+       STATE
+    ══════════════════════════════════════════ */
+    var currentMode  = 'tasbih'; // 'tasbih' | 'wirid' | 'doa' | 'hadis' | 'solat'
+    var currentPin   = '';
+
+    /* Tasbih */
+    var tasbihUnsub  = null;
+    var tasbihData   = null;  // { remaining, done, dateKey }
+    var tasbihTarget = MODE_DAILY_DEFAULTS.tasbih;
+    var _doaReadAllUnsub   = null;
+    var _hadisReadAllUnsub = null;
+    var _kindleWriting     = false; // flag elak loop bila kindle sendiri yang tulis
+    var _kindleWriteTimer  = null;
+
+    /* Doa / Hadis / Wirid / Solat */
+    var allDoaTimes    = [];
+    var allDoaDrawers  = [];
+    var allHadisTimes  = [];
+    var allHadisDrawers = [];
+    var allWiridTimes   = [];
+    var allWiridDrawers = [];
+    var allSolatTimes   = [];
+    var allSolatDrawers = [];
+    var activeTimeId   = null; // id kategori yang dipilih
+    var activeLacis    = [];   // laci yang sedang aktif (filtered by timeId)
+    var laciIndex      = 0;    // index dalam activeLacis
+    var modeUnsub      = null; // onSnapshot untuk *_tasbih
+
+    /* Reset confirm */
+    var resetPending = false;
+
+
+    function setErr(id, msg) { setText(id, msg); }
+    function clearMsg(id)    { setText(id, ''); }
+
+    function todayKey() {
+      var now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      var yyyy = now.getUTCFullYear();
+      var mm   = String(now.getUTCMonth() + 1).padStart(2, '0');
+      var dd   = String(now.getUTCDate()).padStart(2, '0');
+      return yyyy + '-' + mm + '-' + dd;
+    }
+
+    function fmtTime(ts) {
+      if (!ts) return '';
+      var d = new Date(ts + 8 * 60 * 60 * 1000);
+      var h = d.getUTCHours(), mi = d.getUTCMinutes(), s = d.getUTCSeconds();
+      var ampm = h >= 12 ? 'pm' : 'am';
+      h = h % 12 || 12;
+      return h + ':' + String(mi).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ampm;
+    }
+
+    function setConn(live, label) {
+      var dot = document.getElementById('conn-dot');
+      if (dot) {
+        dot.className = 'conn-dot' + (live === true ? ' live' : live === false ? ' err' : '');
+      }
+      setText('conn-label', label || '');
+    }
+
+    function setSyncBadge(msg) {
+      setText('sync-badge', msg || '');
+    }
+
+    /* ══════════════════════════════════════════
+       LOG KELUAR
+    ══════════════════════════════════════════ */
+    document.getElementById('btn-logout').addEventListener('click', function() {
+      stopAllListeners();
+      auth.signOut().then(function() {
+        currentUser = null;
+        showScreen('screen-login');
+      });
+    });
+
+    /* ══════════════════════════════════════════
+       MENU
+    ══════════════════════════════════════════ */
+    document.getElementById('btn-menu-quran').addEventListener('click', function() {
+      startQuran();
+    });
+
+    document.getElementById('btn-menu-tasbih').addEventListener('click', function() {
+      currentMode  = 'tasbih';
+      tasbihTarget = MODE_DAILY_DEFAULTS.tasbih;
+      startTasbihMode();
+    });
+
+    document.getElementById('btn-menu-wirid').addEventListener('click', function() {
+      currentMode = 'wirid';
+      openKatScreen('wirid');
+    });
+
+    document.getElementById('btn-menu-doa').addEventListener('click', function() {
+      currentMode = 'doa';
+      openKatScreen('doa');
+    });
+
+    document.getElementById('btn-menu-hadis').addEventListener('click', function() {
+      currentMode = 'hadis';
+      openKatScreen('hadis');
+    });
+
+    document.getElementById('btn-menu-solat').addEventListener('click', function() {
+      currentMode = 'solat';
+      openKatScreen('solat');
+    });
+
+    /* ══════════════════════════════════════════
+       PILIH KATEGORI (DOA / HADIS)
+    ══════════════════════════════════════════ */
+    function openKatScreen(mode) {
+      var meta = modeMeta(mode);
+      setText('kat-title', meta.katTitle || 'Pilih Kategori');
+      var times  = modeTimes(mode);
+      var drawers = modeDrawers(mode);
+
+      if (!times.length && !drawers.length) {
+        // Belum load — load dulu
+        loadDoaHadisCollections(function() {
+          openKatScreen(mode);
+        });
+        return;
+      }
+
+      // Load drawers on-demand sebelum render senarai kategori
+      loadDrawersOnDemand(mode, function() {
+        renderKatList(mode);
+        showScreen('screen-kat');
+      });
+    }
+
+    var bacaSemua = false; // flag: sedang dalam mod Baca Semua Doa
+
+    function renderKatList(mode) {
+      var times   = modeTimes(mode);
+      var drawers = modeDrawers(mode);
+      var list    = document.getElementById('kat-list');
+      list.innerHTML = '';
+
+      if (!times.length) {
+        list.innerHTML = '<div class="msg">Tiada kategori dijumpai.</div>';
+        return;
+      }
+
+      // ── BACA SEMUA DOA (hanya untuk mod doa) ──
+      if (mode === 'doa') {
+        var semua = drawers.filter(function(d) {
+          return d.zikir || d.maksud || d.title;
+        });
+        if (semua.length) {
+          var divSemua = document.createElement('div');
+          divSemua.className = 'kat-item' + (bacaSemua ? ' aktif' : '');
+
+          var mainSemua = document.createElement('div');
+          mainSemua.textContent = '📖 Baca Semua Doa';
+
+          var subSemua = document.createElement('div');
+          subSemua.className = 'kat-sub';
+          subSemua.textContent = semua.length + ' doa keseluruhan (ikut turutan A-Z)';
+
+          divSemua.appendChild(mainSemua);
+          divSemua.appendChild(subSemua);
+
+          divSemua.addEventListener('click', function() {
+            bacaSemua = true;
+            activeTimeId = null;
+            // Susun ikut turutan kategori (nama kat A-Z/1-100) kemudian laci dalam kat (title A-Z/1-100)
+            var sortedTimes = allDoaTimes.slice().sort(function(a,b) {
+              return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+            });
+            var laciTersusun = [];
+            sortedTimes.forEach(function(t) {
+              var laciDalamKat = semua
+                .filter(function(d) { return d.timeId === t.id; })
+                .sort(function(a,b) {
+                  return (a.title || '').localeCompare(b.title || '', undefined, { numeric: true });
+                });
+              laciDalamKat.forEach(function(d) { laciTersusun.push(d); });
+            });
+            // Laci yang tiada timeId (jika ada) letak di hujung
+            semua.forEach(function(d) {
+              var sudahAda = laciTersusun.indexOf(d) !== -1;
+              if (!sudahAda) laciTersusun.push(d);
+            });
+            activeLacis = laciTersusun;
+            laciIndex = 0;
+            // Cuba load lastIndex dari settings/doaReadAll (selaras dengan app pertama)
+            loadDoaReadAllIndex(function(idx) {
+              laciIndex = (idx >= 0 && idx < activeLacis.length) ? idx : 0;
+              startModeScreen('doa');
+            });
+          });
+
+          list.appendChild(divSemua);
+        }
+      }
+
+      // Sort by name
+      var sorted = times.slice().sort(function(a,b) {
+        return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+      });
+
+      sorted.forEach(function(t) {
+        var count = drawers.filter(function(d) {
+          return d.timeId === t.id && (d.zikir || d.maksud || d.title);
+        }).length;
+        if (!count) return; // skip kategori kosong
+
+        var div = document.createElement('div');
+        div.className = 'kat-item' + (!bacaSemua && activeTimeId === t.id ? ' aktif' : '');
+
+        var mainDiv = document.createElement('div');
+        mainDiv.textContent = t.name || '(Tanpa nama)';
+
+        var subDiv = document.createElement('div');
+        subDiv.className = 'kat-sub';
+        subDiv.textContent = count + ' laci';
+
+        div.appendChild(mainDiv);
+        div.appendChild(subDiv);
+
+        div.addEventListener('click', function() {
+          bacaSemua = false;
+          activeTimeId = t.id;
+          buildActiveLacis(mode);
+          laciIndex = 0;
+          startModeScreen(mode);
+        });
+
+        list.appendChild(div);
+      });
+
+      if (!list.children.length) {
+        list.innerHTML = '<div class="msg">Tiada laci dalam mana-mana kategori.</div>';
+      }
+    }
+
+    document.getElementById('btn-kat-back').addEventListener('click', function() {
+      showScreen('screen-menu');
+    });
+
+    // Track dari mana tasbih screen dibuka
+    var tasbihBackTarget = 'screen-menu'; // 'screen-menu' atau 'screen-kat'
+
+    function buildActiveLacis(mode) {
+      var drawers = modeDrawers(mode);
+      activeLacis = drawers
+        .filter(function(d) {
+          return d.timeId === activeTimeId && (d.zikir || d.maksud || d.title);
+        })
+        .sort(function(a,b) {
+          return (a.title || '').localeCompare(b.title || '', undefined, { numeric: true });
+        });
+    }
+
+    /* ══════════════════════════════════════════
+       LOAD DOA / HADIS COLLECTIONS
+    ══════════════════════════════════════════ */
+    var collectionsLoaded = false;
+
+    // ── CACHE DOA & HADIS DRAWERS ──
+    // Prinsip: load on-demand sahaja, simpan dalam cache
+    // Tiada double work — selagi dalam cache, tidak sentuh Firestore
+    var _doaDrawerCache = null;      // null = belum load, [] = dah load tapi kosong
+    var _hadisDrawerCache = null;
+    var _wiridDrawerCache = null;
+    var _solatDrawerCache = null;
+
+    function loadDrawersOnDemand(mode, cb) {
+      if (mode === 'doa') return loadDoaDrawersOnDemand(cb);
+      if (mode === 'hadis') return loadHadisDrawersOnDemand(cb);
+      if (mode === 'wirid') return loadNamedDrawersOnDemand('wirid', 'routine_drawers', cb);
+      if (mode === 'solat') return loadNamedDrawersOnDemand('solat', 'solat_drawers', cb);
+      cb && cb();
+    }
+
+    function loadNamedDrawersOnDemand(mode, coll, cb) {
+      if (!currentUser) { cb && cb(); return; }
+      var cacheKey = mode === 'wirid' ? '_wiridDrawerCache' : '_solatDrawerCache';
+      if (window[cacheKey]) {
+        if (mode === 'wirid') allWiridDrawers = window[cacheKey];
+        else allSolatDrawers = window[cacheKey];
+        cb && cb();
+        return;
+      }
+      db.collection('users').doc(currentUser.uid).collection(coll).get()
+        .then(function(snap) {
+          var arr = [];
+          snap.forEach(function(d) { var x = d.data(); x.id = d.id; arr.push(x); });
+          window[cacheKey] = arr;
+          if (mode === 'wirid') allWiridDrawers = arr;
+          else allSolatDrawers = arr;
+          cb && cb();
+        }).catch(function() { cb && cb(); });
+    }
+
+    function loadDoaDrawersOnDemand(cb) {
+      if (!currentUser) { cb && cb(); return; }
+      if (_doaDrawerCache) {
+        console.log('✅ Cache hit — doa_drawers dari memori, tiada query Firestore');
+        allDoaDrawers = _doaDrawerCache;
+        cb && cb();
+        return;
+      }
+      console.log('📥 Cache miss — doa_drawers diload dari Firestore');
+      db.collection('users').doc(currentUser.uid).collection('doa_drawers').get()
+        .then(function(snap) {
+          allDoaDrawers = [];
+          snap.forEach(function(d) { var x = d.data(); x.id = d.id; allDoaDrawers.push(x); });
+          _doaDrawerCache = allDoaDrawers;
+          console.log('📥 Cache miss — doa_drawers disimpan dalam cache (' + allDoaDrawers.length + ' laci)');
+          cb && cb();
+        }).catch(function(e) {
+          console.error('❌ Gagal load doa_drawers:', e.message);
+          cb && cb();
+        });
+    }
+
+    function loadHadisDrawersOnDemand(cb) {
+      if (!currentUser) { cb && cb(); return; }
+      if (_hadisDrawerCache) {
+        console.log('✅ Cache hit — hadis_drawers dari memori, tiada query Firestore');
+        allHadisDrawers = _hadisDrawerCache;
+        cb && cb();
+        return;
+      }
+      console.log('📥 Cache miss — hadis_drawers diload dari Firestore');
+      db.collection('users').doc(currentUser.uid).collection('hadis_drawers').get()
+        .then(function(snap) {
+          allHadisDrawers = [];
+          snap.forEach(function(d) { var x = d.data(); x.id = d.id; allHadisDrawers.push(x); });
+          _hadisDrawerCache = allHadisDrawers;
+          console.log('📥 Cache miss — hadis_drawers disimpan dalam cache (' + allHadisDrawers.length + ' laci)');
+          cb && cb();
+        }).catch(function(e) {
+          console.error('❌ Gagal load hadis_drawers:', e.message);
+          cb && cb();
+        });
+    }
+
+    function loadDoaHadisCollections(cb) {
+      if (!currentUser) { cb && cb(); return; }
+      var uid = currentUser.uid;
+
+      // Hanya load times (metadata kecil) — drawers load on-demand bila user pilih kategori
+      Promise.all([
+        db.collection('users').doc(uid).collection('doa_times').get(),
+        db.collection('users').doc(uid).collection('hadis_times').get(),
+        db.collection('users').doc(uid).collection('routine_times').get(),
+        db.collection('users').doc(uid).collection('solat_times').get()
+      ]).then(function(res) {
+        allDoaTimes = [];
+        res[0].forEach(function(d) { var x = d.data(); x.id = d.id; allDoaTimes.push(x); });
+
+        allHadisTimes = [];
+        res[1].forEach(function(d) { var x = d.data(); x.id = d.id; allHadisTimes.push(x); });
+
+        allWiridTimes = [];
+        res[2].forEach(function(d) { var x = d.data(); x.id = d.id; allWiridTimes.push(x); });
+
+        allSolatTimes = [];
+        res[3].forEach(function(d) { var x = d.data(); x.id = d.id; allSolatTimes.push(x); });
+
+        collectionsLoaded = true;
+        console.log('📥 times diload. Drawers akan load on-demand.');
+        cb && cb();
+      }).catch(function(e) {
+        setErr('menu-err', 'Gagal load: ' + (e.message || e));
+        cb && cb();
+      });
+    }
+
+    /* ══════════════════════════════════════════
+       MULAKAN MODE TASBIH (countdown biasa)
+    ══════════════════════════════════════════ */
+    function startTasbihMode() {
+      stopAllListeners();
+      tasbihBackTarget = 'screen-menu';
+      setText('btn-back-tasbih', '← Menu');
+      updateModeTag('TASBIH');
+      document.getElementById('laci-box').style.display   = 'none';
+      document.getElementById('laci-nav').style.display   = 'none';
+      setText('laci-counter', '');
+      document.getElementById('btn-tap').className = 'mode-tasbih';
+      document.getElementById('btn-tap').textContent = 'TAP — ISTIGFAR 5000x';
+      clearMsg('tasbih-err');
+      clearMsg('tasbih-ok');
+      showScreen('screen-tasbih');
+
+      subscribeTasbih('tasbih', todayKey());
+    }
+
+    /* ══════════════════════════════════════════
+       MULAKAN MODE DOA / HADIS
+    ══════════════════════════════════════════ */
+    function startModeScreen(mode) {
+      stopAllListeners();
+      tasbihBackTarget = 'screen-kat';
+      setText('btn-back-tasbih', '← Balik');
+      var meta = modeMeta(mode);
+      updateModeTag(meta.tag);
+
+      document.getElementById('laci-box').style.display = 'block';
+      document.getElementById('laci-nav').style.display = 'flex';
+      document.getElementById('btn-tap').className = 'mode-lain';
+      document.getElementById('btn-tap').textContent = meta.tap;
+      clearMsg('tasbih-err');
+      clearMsg('tasbih-ok');
+      showScreen('screen-tasbih');
+
+      renderTasbihLaci();
+
+      var coll = meta.tasbihColl;
+      subscribeTasbih(coll, todayKey());
+
+      // Subscribe laci index realtime supaya bila phone tukar laci, Kindle ikut
+      if (mode === 'doa' && bacaSemua) {
+        subscribeDoaReadAllIndex();
+      } else if (mode === 'hadis') {
+        subscribeHadisReadAllIndex();
+      }
+    }
+
+    /* ══════════════════════════════════════════
+       RENDER LACI (DOA/HADIS)
+    ══════════════════════════════════════════ */
+    function renderTasbihLaci() {
+      if (!activeLacis.length) {
+        setText('laci-cat', 'Tiada laci');
+        setText('laci-nama', '');
+        setText('laci-zikir', '');
+        setText('laci-maksud', '');
+        setText('laci-target', '');
+        setText('laci-counter', '');
+        return;
+      }
+      var laci = activeLacis[laciIndex];
+      if (!laci) { laciIndex = 0; laci = activeLacis[0]; }
+      // Cari nama kategori berdasarkan timeId laci semasa (berguna untuk Baca Semua)
+      var times = modeTimes(currentMode);
+      var katObj = null;
+      for (var i = 0; i < times.length; i++) {
+        if (times[i].id === laci.timeId) { katObj = times[i]; break; }
+      }
+      var katNama = (katObj && katObj.name) ? katObj.name : (modeMeta(currentMode).fallbackKat || 'Laci');
+      // Baris 1: "kategori : [nama kategori]"
+      setText('laci-cat', 'kategori : ' + katNama);
+      // Baris 2: nama laci sahaja
+      setText('laci-nama', laci.title || '');
+      setText('laci-zikir', laci.zikir || '');
+      setText('laci-maksud', laci.maksud || '');
+      setText('laci-target', laci.target ? ('Target: ' + laci.target) : '');
+      setText('laci-counter', (laciIndex + 1) + ' / ' + activeLacis.length);
+    }
+
+    /* Navigasi laci */
+    document.getElementById('btn-prev-laci').addEventListener('click', function() {
+      if (!activeLacis.length) return;
+      laciIndex = (laciIndex - 1 + activeLacis.length) % activeLacis.length;
+      renderTasbihLaci();
+      syncLaciIndexToFirestore();
+    });
+
+    document.getElementById('btn-next-laci').addEventListener('click', function() {
+      if (!activeLacis.length) return;
+      laciIndex = (laciIndex + 1) % activeLacis.length;
+      renderTasbihLaci();
+      syncLaciIndexToFirestore();
+    });
+
+    function loadDoaReadAllIndex(cb) {
+      if (!currentUser) { cb && cb(0); return; }
+      db.collection('users').doc(currentUser.uid)
+        .collection('settings').doc('doaReadAll')
+        .get()
+        .then(function(snap) {
+          cb && cb(snap.exists ? (snap.data().lastIndex || 0) : 0);
+        })
+        .catch(function() { cb && cb(0); });
+    }
+
+    function subscribeDoaReadAllIndex() {
+      if (!currentUser) return;
+      if (_doaReadAllUnsub) { _doaReadAllUnsub(); _doaReadAllUnsub = null; }
+      _doaReadAllUnsub = db.collection('users').doc(currentUser.uid)
+        .collection('settings').doc('doaReadAll')
+        .onSnapshot(function(snap) {
+          if (!snap.exists) return;
+          if (_kindleWriting) return;
+          var newIndex = snap.data().lastIndex || 0;
+          if (newIndex !== laciIndex && currentMode === 'doa' && bacaSemua) {
+            laciIndex = newIndex;
+            if (laciIndex >= activeLacis.length) laciIndex = 0;
+            renderTasbihLaci();
+            setSyncBadge('Sync laci: ' + fmtTime(Date.now()));
+          }
+        }, function(e) { console.warn('subscribeDoaReadAllIndex error:', e); });
+    }
+
+    function subscribeHadisReadAllIndex() {
+      if (!currentUser) return;
+      if (_hadisReadAllUnsub) { _hadisReadAllUnsub(); _hadisReadAllUnsub = null; }
+      _hadisReadAllUnsub = db.collection('users').doc(currentUser.uid)
+        .collection('settings').doc('hadisReadAll')
+        .onSnapshot(function(snap) {
+          if (!snap.exists) return;
+          if (_kindleWriting) return;
+          var newIndex = snap.data().lastIndex || 0;
+          if (newIndex !== laciIndex && currentMode === 'hadis') {
+            laciIndex = newIndex;
+            if (laciIndex >= activeLacis.length) laciIndex = 0;
+            renderTasbihLaci();
+            setSyncBadge('Sync laci: ' + fmtTime(Date.now()));
+          }
+        }, function(e) { console.warn('subscribeHadisReadAllIndex error:', e); });
+    }
+
+    function syncLaciIndexToFirestore() {
+      if (!currentUser) return;
+      // Set flag — elak loop bila kita sendiri yang tulis
+      _kindleWriting = true;
+      if (_kindleWriteTimer) clearTimeout(_kindleWriteTimer);
+      _kindleWriteTimer = setTimeout(function() { _kindleWriting = false; }, 2000);
+
+      if (bacaSemua && currentMode === 'doa') {
+        db.collection('users').doc(currentUser.uid)
+          .collection('settings').doc('doaReadAll')
+          .set({ lastIndex: laciIndex, updatedAt: Date.now() }, { merge: true })
+          .catch(function(e) { console.warn('Gagal sync doaReadAll:', e); });
+        return;
+      }
+      if (currentMode === 'hadis') {
+        db.collection('users').doc(currentUser.uid)
+          .collection('settings').doc('hadisReadAll')
+          .set({ lastIndex: laciIndex, updatedAt: Date.now() }, { merge: true })
+          .catch(function(e) { console.warn('Gagal sync hadisReadAll:', e); });
+        return;
+      }
+      if (!activeTimeId) return;
+      var coll = modeMeta(currentMode).timesColl;
+      if (!coll) return;
+      db.collection('users').doc(currentUser.uid)
+        .collection(coll).doc(activeTimeId)
+        .update({ lastIndex: laciIndex, updatedAt: Date.now() })
+        .catch(function(e) { console.warn('Gagal sync lastIndex:', e); });
+    }
+
+    /* ══════════════════════════════════════════
+       SUBSCRIBE TASBIH (REALTIME — DUA HALA)
+       coll: 'tasbih' | 'doa_tasbih' | 'hadis_tasbih'
+       key:  dateKey (YYYY-MM-DD)
+    ══════════════════════════════════════════ */
+    function subscribeTasbih(coll, key) {
+      if (!currentUser) return;
+      var uid = currentUser.uid;
+      var ref = db.collection('users').doc(uid).collection(coll).doc(key);
+
+      // Pastikan dokumen wujud dulu
+      ref.get().then(function(snap) {
+        if (!snap.exists) {
+          var defaultTarget = coll === 'tasbih' ? MODE_DAILY_DEFAULTS.tasbih
+                            : coll === 'doa_tasbih' ? MODE_DAILY_DEFAULTS.doa
+                            : coll === 'solat_tasbih' ? MODE_DAILY_DEFAULTS.solat
+                            : coll === 'rutin_tasbih' ? MODE_DAILY_DEFAULTS.wirid
+                            : MODE_DAILY_DEFAULTS.hadis;
+          return ref.set({
+            dateKey: key, createdAt: Date.now(),
+            remaining: defaultTarget, done: false
+          });
+        }
+      }).then(function() {
+        // Sekarang subscribe realtime
+        if (modeUnsub) modeUnsub();
+        var _snapshotCount = 0;
+        modeUnsub = ref.onSnapshot(function(snap) {
+          if (!snap.exists) return;
+          tasbihData = snap.data();
+          tasbihTarget = coll === 'tasbih' ? MODE_DAILY_DEFAULTS.tasbih
+                       : coll === 'doa_tasbih' ? MODE_DAILY_DEFAULTS.doa
+                       : coll === 'solat_tasbih' ? MODE_DAILY_DEFAULTS.solat
+                       : coll === 'rutin_tasbih' ? MODE_DAILY_DEFAULTS.wirid
+                       : MODE_DAILY_DEFAULTS.hadis;
+          setConn(true, 'Tersambung');
+          updateTasbihUI();
+          updateStatusTime();
+          setSyncBadge('Sync: ' + fmtTime(Date.now()));
+        }, function(e) {
+          setConn(false, 'Ralat sambungan');
+          setErr('tasbih-err', 'Ralat: ' + (e.message || e));
+        });
+      }).catch(function(e) {
+        setConn(false, 'Gagal sambung');
+        setErr('tasbih-err', 'Gagal: ' + (e.message || e));
+      });
+    }
+
+    /* ══════════════════════════════════════════
+       UPDATE UI TASBIH
+    ══════════════════════════════════════════ */
+    function updateTasbihUI() {
+      if (!tasbihData) return;
+
+      var rem  = (tasbihData.remaining !== undefined && tasbihData.remaining !== null)
+                 ? tasbihData.remaining : tasbihTarget;
+      var done = !!tasbihData.done;
+      var selesai = tasbihTarget - rem;
+      if (selesai < 0) selesai = 0;
+
+      setText('count-number', done ? '✓ ' + tasbihTarget : String(rem));
+      setText('count-done', done
+        ? 'Selesai hari ini!'
+        : (selesai + ' / ' + tasbihTarget + ' selesai'));
+
+      var pct = tasbihTarget > 0 ? Math.round((selesai / tasbihTarget) * 100) : 0;
+      if (pct > 100) pct = 100;
+      var fill = document.getElementById('progress-fill');
+      if (fill) fill.style.width = pct + '%';
+
+      // Butang tap
+      var btnTap = document.getElementById('btn-tap');
+      if (done) {
+        btnTap.className = 'done-state';
+        btnTap.textContent = 'SELESAI ✓';
+      } else {
+        if (currentMode === 'tasbih') {
+          btnTap.className = 'mode-tasbih';
+          btnTap.textContent = rem > 5000 ? 'TAP — ISTIGFAR 5000x' : 'TAP — SELAWAT 5000x';
+        } else {
+          btnTap.className = 'mode-lain';
+          btnTap.textContent = modeMeta(currentMode).tap;
+        }
+      }
+
+      // Masa kemaskini — diupdate setiap 5 countdown sahaja
+    }
+
+    function updateModeTag(label) {
+      setText('mode-tag', label);
+    }
+
+    /* ══════════════════════════════════════════
+       TAP — DECREMENT (tulis ke Firestore → app pertama terima)
+    ══════════════════════════════════════════ */
+
+    document.getElementById('btn-tap').addEventListener('click', function() {    
+      doTap();
+    });
+
+    // Support swipe/tap besar pada touch
+    document.getElementById('btn-tap').addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      doTap();
+    }, { passive: false });
+
+    var lastTapTs = 0;
+    function doTap() {
+      if (!currentUser || !tasbihData) {
+        setErr('tasbih-err', 'Belum tersambung'); return;
+      }
+      var now = Date.now();
+      if (now - lastTapTs < 300) return; // debounce 300ms
+      lastTapTs = now;
+
+      if (tasbihData.done) {
+        setErr('tasbih-err', 'Countdown hari ini sudah selesai');
+        return;
+      }
+      clearMsg('tasbih-err');
+      clearMsg('tasbih-ok');
+
+      var rem = (tasbihData.remaining !== undefined && tasbihData.remaining !== null)
+                ? tasbihData.remaining : tasbihTarget;
+
+      if (rem <= 0) {
+        tasbihData.done = true;
+        tasbihData.remaining = 0;
+        updateTasbihUI();
+      } else {
+        rem = rem - 1;
+        tasbihData.remaining = rem;
+        if (rem === 0) tasbihData.done = true;
+        updateTasbihUI();
+      }
+
+      // Simpan ke Firestore — app pertama akan dapat realtime update
+      var coll = currentMode === 'tasbih' ? 'tasbih'
+               : currentMode === 'doa'    ? 'doa_tasbih'
+               : 'hadis_tasbih';
+      var key = todayKey();
+      var uid = currentUser.uid;
+      var ref = db.collection('users').doc(uid).collection(coll).doc(key);
+
+      // Tulis setiap 10 atau bila habis (jimat write — sama seperti app pertama)
+            var shouldWrite = (tasbihData.remaining % 5 === 0) || tasbihData.done;
+      if (shouldWrite) {
+        ref.set({
+          remaining: tasbihData.remaining,
+          done:      tasbihData.done,
+          updatedAt: now
+        }, { merge: true }).catch(function(e) {
+          setErr('tasbih-err', 'Gagal simpan: ' + (e.message || e));
+        });
+      }
+
+      // Hantar command ke kindle_session/command supaya app pertama tahu
+      // (command "next" — app pertama akan panggil decrementTasbih)
+      // NOTA: Untuk mod tasbih biasa, app pertama juga subscribe tasbih/{dateKey}
+      //       jadi ia akan auto-sync melalui onSnapshot tanpa perlu command.
+      //       Command ini berguna sebagai fallback / explicit trigger.
+      if (currentMode === 'tasbih') {
+        db.collection('users').doc(uid)
+          .collection('kindle_session').doc('command')
+          .set({ command: 'tasbih_tap', ts: now, source: 'kindle_tasbih' }, { merge: true })
+          .catch(function() {});
+      }
+    }
+
+    /* ══════════════════════════════════════════
+       REFRESH MANUAL
+    ══════════════════════════════════════════ */
+    document.getElementById('btn-refresh').addEventListener('click', function() {
+      clearMsg('tasbih-err');
+      clearMsg('tasbih-ok');
+      setConn(null, 'Menyegar...');
+
+      var coll = modeMeta(currentMode).tasbihColl || 'tasbih';
+      subscribeTasbih(coll, todayKey());
+    });
+
+    /* ══════════════════════════════════════════
+       RESET COUNTDOWN
+    ══════════════════════════════════════════ */
+    function doReset() {
+      if (!currentUser) return;
+      var coll = modeMeta(currentMode).tasbihColl || 'tasbih';
+      var target = MODE_DAILY_DEFAULTS[currentMode] || MODE_DAILY_DEFAULTS.tasbih;
+      var key = todayKey();
+      var uid = currentUser.uid;
+      db.collection('users').doc(uid).collection(coll).doc(key)
+        .set({ remaining: target, done: false, updatedAt: Date.now() }, { merge: true })
+        .then(function() {
+          setText('tasbih-ok', 'Reset berjaya');
+          setTimeout(function() { clearMsg('tasbih-ok'); }, 2000);
+        })
+        .catch(function(e) {
+          setErr('tasbih-err', 'Gagal reset: ' + (e.message || e));
+        });
+    }
+
+    document.getElementById('btn-reset-confirm').addEventListener('click', function() {
+      // Tunjuk popup — user kena taip "reset"
+      document.getElementById('reset-input').value = '';
+      document.getElementById('reset-err').textContent = '';
+      document.getElementById('reset-overlay').style.display = 'flex';
+      setTimeout(function() { document.getElementById('reset-input').focus(); }, 100);
+    });
+
+    document.getElementById('btn-reset-cancel').addEventListener('click', function() {
+      document.getElementById('reset-overlay').style.display = 'none';
+    });
+
+    document.getElementById('btn-reset-ok').addEventListener('click', function() {
+      var val = document.getElementById('reset-input').value.trim().toLowerCase();
+      if (val !== 'reset') {
+        document.getElementById('reset-err').textContent = 'Taip "reset" untuk confirm.';
+        return;
+      }
+      document.getElementById('reset-overlay').style.display = 'none';
+      doReset();
+    });
+
+    document.getElementById('reset-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') document.getElementById('btn-reset-ok').click();
+    });
+
+    /* ══════════════════════════════════════════
+       BALIK KE MENU DARI TASBIH SCREEN
+    ══════════════════════════════════════════ */
+    document.getElementById('btn-back-tasbih').addEventListener('click', function() {
+      stopAllListeners();
+      showScreen(tasbihBackTarget || 'screen-menu');
+    });
+
+    /* ══════════════════════════════════════════
+       STOP SEMUA LISTENERS
+    ══════════════════════════════════════════ */
+    function stopAllListeners() {
+      if (modeUnsub) { modeUnsub(); modeUnsub = null; }
+      if (_doaReadAllUnsub) { _doaReadAllUnsub(); _doaReadAllUnsub = null; }
+      if (_hadisReadAllUnsub) { _hadisReadAllUnsub(); _hadisReadAllUnsub = null; }
+      tasbihData = null;
+      setConn(null, '');
+    }
+
+    /* ══════════════════════════════════════════
+       CLOCK — update masa atas screen — 5 countdown
+    ══════════════════════════════════════════ */
+
+    function updateStatusTime() {
+      var el = document.getElementById('status-time');
+      if (el && tasbihData) {
+        var upd = tasbihData.updatedAt || tasbihData.createdAt;
+        el.textContent = upd ? ('Kali terakhir dikemaskini: ' + fmtTime(upd)) : '';
+      }
+    }
+    /* ══════════════════════════════════════════
+       AUTH STATE — preload collections bila dah login
+    ══════════════════════════════════════════ */
+
+    // ══════════════════════════════════════════
+    // WS NOTIFICATION — REALTIME SUBSCRIBE
+    // ══════════════════════════════════════════
+    var _wsNotifUnsub = null;
+    var _wsNotifDocs  = [];
+
+    function subscribeWsNotif(uid) {
+      if (_wsNotifUnsub) { _wsNotifUnsub(); _wsNotifUnsub = null; }
+      _wsNotifUnsub = db.collection('users').doc(uid)
+        .collection('ws_notification')
+        .onSnapshot(function(snap) {
+          var raw = [];
+          snap.forEach(function(d) {
+            var x = d.data();
+            if (x.active === true) {
+              // Normalize: trim + buang double-space + lowercase untuk key, original untuk display
+              var rawFrom = (x.from || '').replace(/\s+/g, ' ').trim();
+              var displayFrom = rawFrom || '—';
+              var keyFrom = displayFrom.toLowerCase();
+              raw.push({ id: d.id, from: displayFrom, fromKey: keyFrom, message: x.message || '', ts: x.ts || 0 });
+            }
+          });
+          raw.sort(function(a,b) { return b.ts - a.ts; });
+
+          // Dedupe — buang doc dari from sama dalam masa 500ms
+          // Guna fromKey (lowercase) untuk compare, display guna from (original)
+          var seen = {}; // fromKey -> ts terbaru
+          _wsNotifDocs = [];
+          raw.forEach(function(d) {
+            var key = d.fromKey;
+            if (seen[key] === undefined) {
+              seen[key] = d.ts;
+              _wsNotifDocs.push(d);
+            } else {
+              var diff = Math.abs(seen[key] - d.ts);
+              if (diff > 500) {
+                // Beza lebih 500ms — ini mesej berlainan, masuk
+                _wsNotifDocs.push(d);
+                seen[key] = d.ts;
+              }
+              // Beza kurang 500ms — buang (sticker duplicate)
+            }
+          });
+
+          updateWsNotifBadge();
+        }, function(e) { console.warn('wsNotif error:', e); });
+    }
+
+    function stopWsNotif() {
+      if (_wsNotifUnsub) { _wsNotifUnsub(); _wsNotifUnsub = null; }
+      _wsNotifDocs = [];
+      updateWsNotifBadge();
+    }
+
+    function updateWsNotifBadge() {
+      var badge = document.getElementById('ws-notif-badge');
+      var namesEl = document.getElementById('ws-notif-names');
+      if (!badge) return;
+
+      // Kira bilangan nama unik
+      var seen = {};
+      var uniqueCount = 0;
+      _wsNotifDocs.forEach(function(d) {
+        var key = d.fromKey || d.from.toLowerCase();
+        if (!seen[key]) { seen[key] = true; uniqueCount++; }
+      });
+
+      if (uniqueCount > 0) {
+        badge.className = 'active';
+        if (namesEl) namesEl.textContent = '🔔 Noti : ' + uniqueCount;
+      } else {
+        badge.className = '';
+        if (namesEl) namesEl.textContent = '';
+      }
+    }
+
+    function openWsNotifOverlay() {
+      var n = _wsNotifDocs.length;
+      var el2 = document.getElementById('ws-notif-count2');
+      if (el2) el2.textContent = '';
+      var list = document.getElementById('ws-notif-list');
+      list.innerHTML = '';
+
+      // Groupkan by 'fromKey' (lowercase) — display guna 'from' (original)
+      var grouped = {};   // fromKey -> { display, count }
+      var groupOrder = [];
+      _wsNotifDocs.forEach(function(d) {
+        var key = d.fromKey || d.from.toLowerCase();
+        if (!grouped[key]) {
+          grouped[key] = { display: d.from, count: 0 };
+          groupOrder.push(key);
+        }
+        grouped[key].count++;
+      });
+
+      groupOrder.forEach(function(key) {
+        var displayFrom = grouped[key].display;
+        var count = grouped[key].count;
+        var div = document.createElement('div');
+        div.className = 'ws-notif-item';
+        var fromDiv = document.createElement('div');
+        fromDiv.className = 'ws-notif-from';
+        fromDiv.textContent = displayFrom + ' : ' + count;
+
+        var btn = document.createElement('button');
+        btn.textContent = '✓ Dibaca';
+        btn.setAttribute('data-fromkey', key);
+        btn.style.cssText = 'margin-top:6px;width:100%;padding:7px;background:#000;color:#fff;border:none;border-radius:4px;font-size:0.82rem;font-weight:bold;cursor:pointer;';
+        btn.addEventListener('click', function() {
+          var fk = this.getAttribute('data-fromkey');
+          var displayName = grouped[fk].display;
+          wsConfirm('Tandakan "' + displayName + '" sebagai dibaca?', function() {
+            if (!currentUser) return;
+            var uid = currentUser.uid;
+            var toDelete = _wsNotifDocs.filter(function(d) { return d.fromKey === fk; });
+            var promises = toDelete.map(function(d) {
+              return db.collection('users').doc(uid).collection('ws_notification').doc(d.id).delete();
+            });
+            Promise.all(promises).then(function() {
+              _wsNotifDocs = _wsNotifDocs.filter(function(d) { return d.fromKey !== fk; });
+              updateWsNotifBadge();
+              if (_wsNotifDocs.length === 0) {
+                document.getElementById('ws-notif-overlay').className = '';
+              } else {
+                openWsNotifOverlay();
+              }
+            }).catch(function(e) {
+              console.error('Gagal padam notif:', e);
+            });
+          });
+        });
+
+        div.appendChild(fromDiv);
+        div.appendChild(btn);
+        list.appendChild(div);
+      });
+
+      document.getElementById('ws-notif-err').textContent = '';
+      document.getElementById('ws-notif-overlay').className = 'active';
+    }
+
+    // ── WS CONFIRM OVERLAY ──
+    function wsConfirm(msg, cbYa) {
+      var overlay = document.getElementById('ws-confirm-overlay');
+      var msgEl = document.getElementById('ws-confirm-msg');
+      if (msgEl) msgEl.textContent = msg;
+      if (overlay) overlay.style.display = 'flex';
+      var btnYa = document.getElementById('ws-confirm-ya');
+      var btnTidak = document.getElementById('ws-confirm-tidak');
+      var newYa = btnYa.cloneNode(true);
+      var newTidak = btnTidak.cloneNode(true);
+      btnYa.parentNode.replaceChild(newYa, btnYa);
+      btnTidak.parentNode.replaceChild(newTidak, btnTidak);
+      newYa.onclick = function() {
+        overlay.style.display = 'none';
+        cbYa && cbYa();
+      };
+      newTidak.onclick = function() {
+        overlay.style.display = 'none';
+      };
+    }
+
+    document.getElementById('ws-notif-badge').addEventListener('click', openWsNotifOverlay);
+
+    document.getElementById('btn-ws-notif-batal').addEventListener('click', function() {
+      document.getElementById('ws-notif-overlay').className = '';
+    });
+
+    // ══════════════════════════════════════════
+    // AUTH STATE
+    // ══════════════════════════════════════════
+    // ══════════════════════════════════════════
+    // LOCK OVERLAY MANUAL
+    // ══════════════════════════════════════════
+    (function() {
+      var lockOverlay  = document.getElementById('lock-overlay');
+      var lockPinInput = document.getElementById('lock-pin-input');
+      var lockPinOk    = document.getElementById('lock-pin-ok');
+      var lockPinMsg   = document.getElementById('lock-pin-msg');
+      var btnLockFloat = document.getElementById('btn-lock-float');
+      var lockFasaCd   = document.getElementById('lock-fasa-countdown');
+      var _lockCdTimer = null;
+
+      function simpanLockState(aktif) {
+        if (!currentUser) return;
+        db.collection('users').doc(currentUser.uid).collection('kindle_settings').doc('manual_lock')
+          .set({ aktif: aktif, updatedAt: Date.now() }).catch(function() {});
+      }
+
+      function activateLock() {
+        lockFasaCd.className = '';
+        lockOverlay.className = 'active';
+        lockPinInput.value = '';
+        lockPinMsg.textContent = '';
+        simpanLockState(true);
+        setTimeout(function() { lockPinInput.focus(); }, 100);
+      }
+
+      function deactivateLock() {
+        lockOverlay.className = '';
+        lockFasaCd.className = '';
+        if (_lockCdTimer) { clearInterval(_lockCdTimer); _lockCdTimer = null; }
+        lockPinInput.value = '';
+        lockPinMsg.textContent = '';
+        simpanLockState(false);
+      }
+
+      function cubaUnlock() {
+        var pin = lockPinInput.value.trim();
+        if (!pin || !/^\d{4,6}$/.test(pin)) { lockPinMsg.textContent = 'PIN mesti 4-6 digit'; return; }
+        lockPinMsg.textContent = 'Mengesahkan...';
+        lockPinOk.disabled = true;
+        auth.signInWithEmailAndPassword(ADMIN_EMAIL, pin)
+          .then(function() { lockPinOk.disabled = false; lockPinInput.value = ''; lockPinMsg.textContent = ''; deactivateLock(); })
+          .catch(function(e) {
+            lockPinOk.disabled = false;
+            lockPinMsg.textContent = (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials') ? 'PIN salah' : (e.message || e.code);
+          });
+      }
+
+      function mulaLockCountdown() {
+        lockFasaCd.className = 'active';
+        jalanLockCd1();
+      }
+
+      function jalanLockCd1() {
+        var n = 5;
+        document.getElementById('lock-cd-num').textContent = n;
+        document.getElementById('lock-cd-label').textContent = '';
+        document.getElementById('lock-nafas-label').textContent = '';
+        document.getElementById('lock-nafas-bar-wrap').style.display = 'none';
+        _lockCdTimer = setInterval(function() {
+          n--;
+          if (n > 0) { document.getElementById('lock-cd-num').textContent = n; }
+          else {
+            clearInterval(_lockCdTimer);
+            document.getElementById('lock-cd-num').textContent = '';
+            document.getElementById('lock-cd-label').textContent = 'Duduk';
+            setTimeout(function() { jalanLockNafas(3, function() { jalanLockCd2(); }); }, 800);
+          }
+        }, 1000);
+      }
+
+      function jalanLockNafas(pusingan, selepas) {
+        if (pusingan <= 0) { selepas(); return; }
+        document.getElementById('lock-cd-label').textContent = 'Pusingan ' + (4 - pusingan) + '/3';
+        document.getElementById('lock-nafas-bar-wrap').style.display = 'block';
+        document.getElementById('lock-nafas-label').textContent = 'Tarik Nafas...';
+        animasiLockBar(5000, '#6366f1, #8b5cf6', function() {
+          document.getElementById('lock-nafas-label').textContent = 'Hempus Nafas...';
+          animasiLockBar(5000, '#059669, #34d399', function() { jalanLockNafas(pusingan - 1, selepas); });
+        });
+      }
+
+      function animasiLockBar(durasi, gradient, selepas) {
+        var bar = document.getElementById('lock-nafas-bar');
+        bar.style.transition = 'none'; bar.style.width = '0%';
+        bar.style.background = 'linear-gradient(90deg,' + gradient + ')';
+        setTimeout(function() {
+          bar.style.transition = 'width ' + durasi + 'ms linear';
+          bar.style.width = '100%';
+          setTimeout(selepas, durasi);
+        }, 50);
+      }
+
+      function jalanLockCd2() {
+        document.getElementById('lock-nafas-bar-wrap').style.display = 'none';
+        document.getElementById('lock-nafas-label').textContent = '';
+        var n = 5;
+        document.getElementById('lock-cd-num').textContent = n;
+        document.getElementById('lock-cd-label').textContent = '';
+        _lockCdTimer = setInterval(function() {
+          n--;
+          if (n > 0) { document.getElementById('lock-cd-num').textContent = n; }
+          else {
+            clearInterval(_lockCdTimer);
+            document.getElementById('lock-cd-num').textContent = 'GO!';
+            document.getElementById('lock-cd-label').textContent = 'Sentiasa Maju Ke Hadapan!';
+            setTimeout(function() {
+              lockFasaCd.className = '';
+              lockPinInput.value = '';
+              lockPinMsg.textContent = '';
+            }, 3000);
+          }
+        }, 1000);
+      }
+
+      window._loadManualLockState = function() {
+        if (!currentUser) return;
+        db.collection('users').doc(currentUser.uid).collection('kindle_settings').doc('manual_lock')
+          .get().then(function(snap) {
+            if (snap.exists && snap.data().aktif) { activateLock(); }
+          }).catch(function() {});
+      };
+
+      if (btnLockFloat) btnLockFloat.onclick = activateLock;
+      if (lockPinOk) lockPinOk.onclick = cubaUnlock;
+      if (lockPinInput) lockPinInput.onkeydown = function(e) { if (e.key === 'Enter') cubaUnlock(); };
+      document.getElementById('lock-cd-start').onclick = mulaLockCountdown;
+    })();
+
+    // ══════════════════════════════════════════
+    // AZAN LOCK SYSTEM
+    // ══════════════════════════════════════════
+    (function() {
+      var _azanWaktu = null;
+      var _azanTimers  = [];
+      var _azanCdTimer = null;
+      var _azanFasa    = null;     // 'pin' | 'countdown'
+      var _azanTestMode = false;
+      var _lokasiNama  = '';
+      var _subuhEsokMs = 0;
+      var _waktuSolatList = [];
+      window._reminderBolehCheck = false;
+      window._azanFasaSemasa = '';
+
+      function elAzan(id) { return document.getElementById(id); }
+
+      var _azanUnlocked = {};
+
+      function tarikhHariIni() {
+        var d = new Date();
+        return d.getFullYear() + '-' + (d.getMonth()+1 < 10 ? '0' : '') + (d.getMonth()+1) + '-' + (d.getDate() < 10 ? '0' : '') + d.getDate();
+      }
+
+      function simpanAzanUnlocked(namaWaktu, fasa) {
+        if (!currentUser) return;
+        var key = namaWaktu + '_' + (fasa || 'post');
+        _azanUnlocked[key] = Date.now();
+        db.collection('users').doc(currentUser.uid).collection('kindle_settings').doc('azan_unlocked')
+          .set(_azanUnlocked).catch(function() {});
+      }
+
+      function loadAzanUnlocked(uid, cb) {
+        db.collection('users').doc(uid).collection('kindle_settings').doc('azan_unlocked')
+          .get().then(function(snap) {
+            if (snap.exists) { _azanUnlocked = snap.data() || {}; }
+            cb && cb();
+          }).catch(function() { cb && cb(); });
+      }
+
+      function sudahUnlocked(namaWaktu, fasa) {
+        var key = namaWaktu + '_' + (fasa || 'post');
+        var ts = _azanUnlocked[key];
+        if (!ts) return false;
+        if (typeof ts === 'number') {
+          if (_subuhEsokMs > 0) {
+            var had20min = 20 * 60 * 1000;
+            var hadAtas = _subuhEsokMs - had20min;
+            var hadBawah;
+            if (window._lepasTenahMalam) {
+              hadBawah = (window._subuhHariIniMs || _subuhEsokMs - 24*60*60*1000) - had20min - 24*60*60*1000;
+            } else {
+              hadBawah = (window._subuhHariIniMs || _subuhEsokMs - 24*60*60*1000) - had20min;
+            }
+            return ts > hadBawah && ts < hadAtas;
+          }
+        }
+        return false;
+      }
+
+      function simpanAzanLockState(aktif, fasa, namaWaktu, jamStr, lokasiNama) {
+        if (!currentUser) return;
+        db.collection('users').doc(currentUser.uid).collection('kindle_settings').doc('azan_lock')
+          .set({ aktif: aktif, fasa: fasa || null, namaWaktu: namaWaktu || null, jamStr: jamStr || null, lokasiNama: lokasiNama || null, updatedAt: Date.now() })
+          .catch(function() {});
+      }
+
+      function loadAzanLockState(uid) {
+        db.collection('users').doc(uid).collection('kindle_settings').doc('azan_lock')
+          .get().then(function(snap) {
+            if (!snap.exists || !snap.data().aktif) return;
+            var d = snap.data();
+            triggerLock(d.fasa || 'pin', d.namaWaktu || '—', d.jamStr || '—', d.lokasiNama || '—');
+          }).catch(function() {});
+      }
+
+      // Fetch lokasi aktif + waktu solat
+      function fetchAzanData(uid) {
+        loadAzanUnlocked(uid, function() {
+          db.collection('users').doc(uid).collection('kindle_settings').doc('solat_lokasi')
+            .get().then(function(snap) {
+              if (!snap.exists) { loadAzanLockState(uid); return; }
+              var d = snap.data();
+              _lokasiNama = d.nama || '';
+              var lat = d.lat; var lng = d.lng;
+              if (!lat || !lng) { loadAzanLockState(uid); return; }
+              refreshSemuaLokasi(uid, lat, lng, function() {
+                loadAzanLockState(uid);
+              });
+            }).catch(function() { loadAzanLockState(uid); });
+        });
+      }
+
+      // Refresh waktu semua lokasi ke Firebase (Kindle yang buat)
+      function refreshSemuaLokasi(uid, activeLat, activeLng, cb) {
+        db.collection('users').doc(uid).collection('solat_lokasi').get()
+          .then(function(snap) {
+            var cbDipanggil = false;
+            snap.forEach(function(d) {
+              var lok = d.data();
+              if (!lok.lat || !lok.lng) return;
+              if (lok.lat === activeLat && lok.lng === activeLng && lok.waktu) {
+                setAzanTimers(lok.waktu, _lokasiNama);
+                if (!cbDipanggil) { cbDipanggil = true; cb && cb(); }
+              } else if (lok.lat === activeLat && lok.lng === activeLng) {
+                if (!cbDipanggil) { cbDipanggil = true; cb && cb(); }
+              }
+              var url = 'https://api.aladhan.com/v1/timings?latitude=' + lok.lat + '&longitude=' + lok.lng + '&method=11';
+              fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.code !== 200) return;
+                var t = data.data.timings;
+                var waktu = { Subuh: t.Fajr, Syuruk: t.Sunrise, Zohor: t.Dhuhr, Asar: t.Asr, Maghrib: t.Maghrib, Isyak: t.Isha };
+                d.ref.update({ waktu: waktu, waktuUpdated: Date.now() }).catch(function() {});
+                if (lok.lat === activeLat && lok.lng === activeLng) {
+                  setAzanTimers(waktu, _lokasiNama);
+                  if (!cbDipanggil) { cbDipanggil = true; cb && cb(); }
+                }
+              }).catch(function() {
+                if (!cbDipanggil) { cbDipanggil = true; cb && cb(); }
+              });
+            });
+            if (!snap.size && !cbDipanggil) { cbDipanggil = true; cb && cb(); }
+          }).catch(function() { cb && cb(); });
+      }
+
+      // Set timer azan
+      function setAzanTimers(waktu, lokasiNama) {
+        clearAzanTimers();
+        window._reminderBolehCheck = false;
+        window._azanFasaSemasa = '';
+        var waktuSolat = ['Subuh','Zohor','Asar','Maghrib','Isyak'];
+        var nowMs = getNowMs();
+        var now = new Date(nowMs);
+
+        // Detect tempoh 12am-Subuh
+        var subuhHariIniMs = 0;
+        if (waktu['Subuh']) {
+          var subuhParts = waktu['Subuh'].split(':');
+          subuhHariIniMs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(subuhParts[0]), parseInt(subuhParts[1]), 0).getTime();
+        }
+        var lepasTenahMalam = subuhHariIniMs > 0 && nowMs < subuhHariIniMs;
+        window._subuhHariIniMs = subuhHariIniMs;
+        window._lepasTenahMalam = lepasTenahMalam;
+
+        // Bina array waktu dengan timestamp
+        var waktuList = [];
+        waktuSolat.forEach(function(nama) {
+          var jamStr = waktu[nama];
+          if (!jamStr) return;
+          var parts = jamStr.split(':');
+          var h = parseInt(parts[0]); var m = parseInt(parts[1]);
+          var waktuMs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0).getTime();
+          if (lepasTenahMalam && waktuMs > nowMs && nama !== 'Subuh') {
+            waktuMs = waktuMs - 24 * 60 * 60 * 1000;
+          }
+          waktuList.push({ nama: nama, jamStr: jamStr, waktuMs: waktuMs });
+        });
+        // Tambah Subuh esok untuk timeout isyak
+        if (waktu['Subuh']) {
+          var parts = waktu['Subuh'].split(':');
+          var h = parseInt(parts[0]); var m = parseInt(parts[1]);
+          var subuhEsok = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h, m, 0).getTime();
+          waktuList.push({ nama: 'Subuh', jamStr: waktu['Subuh'], waktuMs: subuhEsok });
+          _subuhEsokMs = subuhEsok;
+        }
+        _waktuSolatList = waktuList;
+        paparWaktuSolat(waktuList);
+
+        waktuList.forEach(function(item, idx) {
+          var waktuMs = item.waktuMs;
+          var ms25 = waktuMs - 25 * 60 * 1000 - nowMs;
+          var ms20 = waktuMs - 20 * 60 * 1000 - nowMs;
+          var ms5  = waktuMs - 5  * 60 * 1000 - nowMs;
+          var nextWaktuMs = (idx + 1 < waktuList.length) ? waktuList[idx + 1].waktuMs : null;
+
+          (function(n, j, nextMs) {
+            if (ms25 > 0) {
+              _azanTimers.push(setTimeout(function() {
+                window._reminderBolehCheck = false;
+                window._azanFasaSemasa = '';
+              }, ms25));
+            }
+            if (ms20 > 0) {
+              _azanTimers.push(setTimeout(function() {
+                window._azanFasaSemasa = 'pre20';
+                if (!sudahUnlocked(n, 'pre20')) triggerLock('pin', n, j, lokasiNama);
+              }, ms20));
+            } else if (ms5 > 0) {
+              window._azanFasaSemasa = 'pre20';
+              if (!sudahUnlocked(n, 'pre20')) triggerLock('pin', n, j, lokasiNama);
+            } else if (nowMs < waktuMs) {
+              window._azanFasaSemasa = 'pre20';
+              if (!sudahUnlocked(n, 'pre20')) triggerLock('pin', n, j, lokasiNama);
+            } else if (nextMs && nowMs < nextMs) {
+              window._azanFasaSemasa = 'post';
+              if (!sudahUnlocked(n, 'post')) triggerLock('pin', n, j, lokasiNama);
+            }
+            if (ms5 > 0) {
+              _azanTimers.push(setTimeout(function() {
+                window._azanFasaSemasa = 'pre5';
+                tambahAzanLog('5min sebelum ' + n + ' — popup wudhu');
+                if (!sudahUnlocked(n, 'pre5')) triggerLock('countdown', n, j, lokasiNama);
+                else tambahAzanLog('→ ' + n + ' pre5 dah unlock, skip');
+              }, ms5));
+            }
+
+            // ── POPUP SELEPAS AZAN (ms0) ──
+            var ms0 = waktuMs - nowMs;
+            if (ms0 > 0) {
+              _azanTimers.push(setTimeout(function() {
+                window._azanFasaSemasa = 'post';
+                tambahAzanLog('Azan ' + n + ' — popup post');
+                if (!sudahUnlocked(n, 'post')) {
+                  window._reminderBolehCheck = false;
+                  triggerLock('pin', n, j, lokasiNama);
+                } else {
+                  window._reminderBolehCheck = true;
+                  tambahAzanLog('→ ' + n + ' post dah unlock, reminder ON');
+                }
+              }, ms0));
+            }
+          })(item.nama, item.jamStr, nextWaktuMs);
+        });
+
+        // Auto-aktif reminder bila login antara dua waktu
+        var waktuLepas = null;
+        var waktuSeterusnya = null;
+        for (var i = 0; i < waktuList.length; i++) {
+          if (waktuList[i].waktuMs <= nowMs) {
+            waktuLepas = waktuList[i];
+          } else {
+            if (!waktuSeterusnya) waktuSeterusnya = waktuList[i];
+          }
+        }
+        if (waktuLepas && sudahUnlocked(waktuLepas.nama, 'post')) {
+          var masaSelepasWaktuLepas = nowMs - waktuLepas.waktuMs;
+          var masaKeWaktuSeterusnya = waktuSeterusnya ? (waktuSeterusnya.waktuMs - nowMs) : 99999 * 60 * 1000;
+          if (masaSelepasWaktuLepas > 0 && masaKeWaktuSeterusnya > 25 * 60 * 1000) {
+            window._reminderBolehCheck = true;
+          }
+        }
+        startAzanLiveWatch();
+      }
+
+      var _azanLiveLast = 0;
+
+      function semakAzanLive() {
+        if (!_waktuSolatList || !_waktuSolatList.length) return;
+        var tapMs = Date.now();
+        if (tapMs - _azanLiveLast < 1500) return;
+        _azanLiveLast = tapMs;
+        var nowMs = getNowMs();
+        var last = null; var next = null; var i;
+        for (i = 0; i < _waktuSolatList.length; i++) {
+          if (_waktuSolatList[i].waktuMs <= nowMs) last = _waktuSolatList[i];
+          else if (!next) next = _waktuSolatList[i];
+        }
+        if (next && (next.waktuMs - nowMs) <= 25 * 60 * 1000) {
+          window._reminderBolehCheck = false;
+        }
+        if (next) {
+          var t = next.waktuMs;
+          if (nowMs >= t - 20 * 60 * 1000 && nowMs < t - 5 * 60 * 1000) {
+            window._azanFasaSemasa = 'pre20';
+            window._reminderBolehCheck = false;
+            if (!sudahUnlocked(next.nama, 'pre20')) { triggerLock('pin', next.nama, next.jamStr, _lokasiNama); }
+            return;
+          }
+          if (nowMs >= t - 5 * 60 * 1000 && nowMs < t) {
+            window._azanFasaSemasa = 'pre5';
+            window._reminderBolehCheck = false;
+            if (!sudahUnlocked(next.nama, 'pre5')) { triggerLock('countdown', next.nama, next.jamStr, _lokasiNama); }
+            return;
+          }
+        }
+        if (last) {
+          window._azanFasaSemasa = 'post';
+          if (!sudahUnlocked(last.nama, 'post')) {
+            window._reminderBolehCheck = false;
+            triggerLock('pin', last.nama, last.jamStr, _lokasiNama);
+            return;
+          }
+          if (!next || (next.waktuMs - nowMs) > 25 * 60 * 1000) {
+            window._reminderBolehCheck = true;
+          }
+        }
+      }
+
+      function startAzanLiveWatch() {
+        if (window._azanTouchBind) return;
+        window._azanTouchBind = true;
+        document.addEventListener('touchstart', semakAzanLive, { passive: true });
+        document.addEventListener('click', semakAzanLive);
+        document.addEventListener('visibilitychange', function() {
+          if (!document.hidden) { _azanLiveLast = 0; semakAzanLive(); }
+        });
+        window.addEventListener('pageshow', function() { _azanLiveLast = 0; semakAzanLive(); });
+      }
+
+      function clearAzanTimers() {
+        _azanTimers.forEach(function(t) { clearTimeout(t); });
+        _azanTimers = [];
+        if (_azanCdTimer) { clearInterval(_azanCdTimer); _azanCdTimer = null; }
+      }
+
+      // Trigger lock screen
+      function triggerLock(fasa, namaWaktu, jamStr, lokasiNama) {
+        var lockEl = elAzan('azan-lock');
+        if (lockEl && lockEl.classList.contains('active')) {
+          var namaAktif = elAzan('azan-waktu-nama') ? elAzan('azan-waktu-nama').textContent : '';
+          if (namaAktif === namaWaktu && _azanFasa === fasa) return;
+          if (_azanFasa === 'post' && fasa !== 'post') return;
+        }
+        _azanFasa = fasa;
+        elAzan('azan-waktu-nama').textContent = namaWaktu;
+        elAzan('azan-waktu-jam').textContent = jamStr;
+        elAzan('azan-lokasi').textContent = '📍 ' + (lokasiNama || '—');
+        elAzan('azan-cd-overlay').className = '';
+        elAzan('azan-pin-input').value = '';
+        elAzan('azan-pin-msg').textContent = '';
+        elAzan('azan-cd-pin-input').value = '';
+        elAzan('azan-cd-pin-msg').textContent = '';
+        elAzan('azan-pin-cd-start').style.display = fasa === 'pin' ? 'block' : 'none';
+        elAzan('azan-cd-start').style.display = fasa === 'countdown' ? 'block' : 'none';
+        elAzan('azan-lock').className = 'active';
+        simpanAzanLockState(true, fasa, namaWaktu, jamStr, lokasiNama);
+      }
+
+      // PIN unlock (fasa 20 minit)
+      function cubaUnlockAzan() {
+        var pin = (elAzan('azan-pin-input').value || elAzan('azan-cd-pin-input').value || '').trim();
+        if (!pin || !/^\d{4,6}$/.test(pin)) {
+          elAzan('azan-pin-msg').textContent = 'PIN mesti 4-6 digit';
+          elAzan('azan-cd-pin-msg').textContent = 'PIN mesti 4-6 digit';
+          return;
+        }
+        elAzan('azan-pin-msg').textContent = 'Mengesahkan...';
+        elAzan('azan-cd-pin-msg').textContent = 'Mengesahkan...';
+        elAzan('azan-pin-ok').disabled = true;
+        elAzan('azan-cd-pin-ok').disabled = true;
+        auth.signInWithEmailAndPassword(ADMIN_EMAIL, pin)
+          .then(function() {
+            elAzan('azan-pin-input').value = '';
+            elAzan('azan-pin-msg').textContent = '';
+            elAzan('azan-cd-pin-input').value = '';
+            elAzan('azan-cd-pin-msg').textContent = '';
+            elAzan('azan-pin-ok').disabled = false;
+            elAzan('azan-cd-pin-ok').disabled = false;
+            elAzan('azan-cd-overlay').className = '';
+            elAzan('azan-lock').className = '';
+            simpanAzanLockState(false);
+            var namaWaktuSemasa = elAzan('azan-waktu-nama').textContent;
+            var azanFasaSemasa = window._azanFasaSemasa || 'post';
+            if (namaWaktuSemasa && namaWaktuSemasa !== '—') simpanAzanUnlocked(namaWaktuSemasa, azanFasaSemasa);
+            if (azanFasaSemasa === 'post') {
+              window._reminderBolehCheck = true;
+              if (window._azanSelesai) window._azanSelesai();
+            }
+          })
+          .catch(function(e) {
+            elAzan('azan-pin-ok').disabled = false;
+            elAzan('azan-cd-pin-ok').disabled = false;
+            var msg = (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials') ? 'PIN salah' : (e.message || e.code);
+            elAzan('azan-pin-msg').textContent = msg;
+            elAzan('azan-cd-pin-msg').textContent = msg;
+          });
+      }
+
+      function mulaAzanPinCountdown() {
+        elAzan('azan-cd-overlay').className = 'active';
+        elAzan('azan-cd-num').textContent = '';
+        elAzan('azan-cd-label').textContent = '';
+        elAzan('azan-nafas-label').textContent = '';
+        elAzan('azan-nafas-bar-wrap').style.display = 'none';
+        jalanAzanPinCd1();
+      }
+
+      function jalanAzanPinCd1() {
+        var n = 5;
+        elAzan('azan-cd-num').textContent = n;
+        elAzan('azan-cd-label').textContent = '';
+        elAzan('azan-nafas-label').textContent = '';
+        elAzan('azan-nafas-bar-wrap').style.display = 'none';
+        _azanCdTimer = setInterval(function() {
+          n--;
+          if (n > 0) { elAzan('azan-cd-num').textContent = n; }
+          else {
+            clearInterval(_azanCdTimer);
+            elAzan('azan-cd-num').textContent = '';
+            elAzan('azan-cd-label').textContent = 'Duduk';
+            setTimeout(function() { jalanAzanPinNafas(3, function() { jalanAzanPinCd2(); }); }, 800);
+          }
+        }, 1000);
+      }
+
+      function jalanAzanPinNafas(pusingan, selepas) {
+        if (pusingan <= 0) { selepas(); return; }
+        elAzan('azan-cd-label').textContent = 'Pusingan ' + (4 - pusingan) + '/3';
+        elAzan('azan-nafas-bar-wrap').style.display = 'block';
+        elAzan('azan-nafas-label').textContent = 'Tarik Nafas...';
+        animasiBar(5000, '#6366f1, #8b5cf6', function() {
+          elAzan('azan-nafas-label').textContent = 'Hempus Nafas...';
+          animasiBar(5000, '#059669, #34d399', function() { jalanAzanPinNafas(pusingan - 1, selepas); });
+        });
+      }
+
+      function jalanAzanPinCd2() {
+        elAzan('azan-nafas-bar-wrap').style.display = 'none';
+        elAzan('azan-nafas-label').textContent = '';
+        var n = 5;
+        elAzan('azan-cd-num').textContent = n;
+        elAzan('azan-cd-label').textContent = '';
+        _azanCdTimer = setInterval(function() {
+          n--;
+          if (n > 0) { elAzan('azan-cd-num').textContent = n; }
+          else {
+            clearInterval(_azanCdTimer);
+            elAzan('azan-cd-num').textContent = 'GO!';
+            elAzan('azan-cd-label').textContent = 'Pergi ambil wudhu sekarang';
+            setTimeout(function() {
+              elAzan('azan-cd-overlay').className = '';
+              elAzan('azan-pin-input').value = '';
+              elAzan('azan-pin-msg').textContent = '';
+              elAzan('azan-cd-pin-input').value = '';
+              elAzan('azan-cd-pin-msg').textContent = '';
+            }, 3000);
+          }
+        }, 1000);
+      }
+
+      // Mula countdown (fasa 5 minit)
+      function mulaCountdown() {
+        elAzan('azan-cd-start').style.display = 'none';
+        elAzan('azan-cd-overlay').className = 'active';
+        elAzan('azan-cd-num').textContent = '';
+        elAzan('azan-cd-label').textContent = '';
+        elAzan('azan-nafas-label').textContent = '';
+        elAzan('azan-nafas-bar-wrap').style.display = 'none';
+        jalankanCountdownFasa1();
+      }
+
+      // Countdown 5→1 Duduk
+      function jalankanCountdownFasa1() {
+        var n = 5;
+        elAzan('azan-cd-num').textContent = n;
+        elAzan('azan-cd-label').textContent = '';
+        elAzan('azan-nafas-label').textContent = '';
+        elAzan('azan-nafas-bar-wrap').style.display = 'none';
+        _azanCdTimer = setInterval(function() {
+          n--;
+          if (n > 0) {
+            elAzan('azan-cd-num').textContent = n;
+          } else {
+            clearInterval(_azanCdTimer);
+            elAzan('azan-cd-num').textContent = '';
+            elAzan('azan-cd-label').textContent = 'Duduk';
+            setTimeout(function() { jalankanNafas(3, function() { jalankanCountdownFasa2(); }); }, 800);
+          }
+        }, 1000);
+      }
+
+      // 3 pusingan nafas — tarik 5s hempus 5s
+      function jalankanNafas(pusingan, selepas) {
+        if (pusingan <= 0) { selepas(); return; }
+        elAzan('azan-cd-label').textContent = 'Pusingan ' + (4 - pusingan) + '/3';
+        elAzan('azan-nafas-bar-wrap').style.display = 'block';
+        // Tarik nafas 5s
+        elAzan('azan-nafas-label').textContent = 'Tarik Nafas...';
+        animasiBar(5000, '#6366f1, #8b5cf6', function() {
+          // Hempus 5s
+          elAzan('azan-nafas-label').textContent = 'Hempus Nafas...';
+          animasiBar(5000, '#059669, #34d399', function() {
+            jalankanNafas(pusingan - 1, selepas);
+          });
+        });
+      }
+
+      function animasiBar(durasi, gradient, selepas) {
+        var bar = elAzan('azan-nafas-bar');
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        bar.style.background = 'linear-gradient(90deg,' + gradient + ')';
+        setTimeout(function() {
+          bar.style.transition = 'width ' + durasi + 'ms linear';
+          bar.style.width = '100%';
+          setTimeout(selepas, durasi);
+        }, 50);
+      }
+
+      // Countdown 5→1 GO!
+      function jalankanCountdownFasa2() {
+        elAzan('azan-nafas-bar-wrap').style.display = 'none';
+        elAzan('azan-nafas-label').textContent = '';
+        var n = 5;
+        elAzan('azan-cd-num').textContent = n;
+        elAzan('azan-cd-label').textContent = '';
+        _azanCdTimer = setInterval(function() {
+          n--;
+          if (n > 0) {
+            elAzan('azan-cd-num').textContent = n;
+          } else {
+            clearInterval(_azanCdTimer);
+            elAzan('azan-cd-num').textContent = 'GO!';
+            elAzan('azan-cd-label').textContent = 'Pergi ambil wudhu sekarang';
+            setTimeout(function() {
+              elAzan('azan-cd-overlay').className = '';
+              elAzan('azan-cd-start').style.display = 'block';
+              elAzan('azan-pin-input').value = '';
+              elAzan('azan-pin-msg').textContent = '';
+              elAzan('azan-cd-pin-input').value = '';
+              elAzan('azan-cd-pin-msg').textContent = '';
+            }, 3000);
+          }
+        }, 1000);
+      }
+
+      // ── Event listeners ──
+      elAzan('azan-pin-ok').onclick = cubaUnlockAzan;
+      elAzan('azan-pin-input').onkeydown = function(e) { if (e.key === 'Enter') cubaUnlockAzan(); };
+      elAzan('azan-cd-start').onclick = mulaCountdown;
+      elAzan('azan-pin-cd-start').onclick = mulaAzanPinCountdown;
+      elAzan('azan-cd-pin-ok').onclick = cubaUnlockAzan;
+      elAzan('azan-cd-pin-input').onkeydown = function(e) { if (e.key === 'Enter') cubaUnlockAzan(); };
+      elAzan('azan-lock').addEventListener('click', function(e) { e.stopPropagation(); });
+
+      // ── Clock Picker Jam & Minit & AM/PM ──
+      (function() {
+        var now = new Date();
+        var selJam12 = now.getHours() % 12 || 12;
+        var selMinit = now.getMinutes();
+        var selAmpm = now.getHours() >= 12 ? 1 : 0;
+        var clockMode = 'jam';
+        var cx = 110, cy = 110, handR = 80;
+
+        function lukisClock() {
+          var svg = document.getElementById('azan-clock-svg');
+          if (!svg) return;
+          var isMinit = clockMode === 'minit';
+          var val = isMinit ? selMinit : selJam12;
+          var total = isMinit ? 60 : 12;
+
+          var old = svg.querySelectorAll('.ck-num');
+          for (var i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
+
+          for (var n = 1; n <= total; n++) {
+            if (isMinit && n % 5 !== 0) continue;
+            var ang = ((n / total) * 2 * Math.PI) - Math.PI / 2;
+            var nr = 88;
+            var nx = cx + nr * Math.cos(ang);
+            var ny = cy + nr * Math.sin(ang);
+            var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            t.setAttribute('x', nx.toFixed(1));
+            t.setAttribute('y', ny.toFixed(1));
+            t.setAttribute('text-anchor', 'middle');
+            t.setAttribute('dominant-baseline', 'middle');
+            t.setAttribute('font-size', isMinit ? '11' : '14');
+            t.setAttribute('font-weight', 'bold');
+            t.setAttribute('class', 'ck-num');
+            t.textContent = isMinit ? (n < 10 ? '0' + n : '' + n) : '' + n;
+            var isActive = isMinit ? (n === selMinit || (selMinit === 0 && n === 60)) : (n === selJam12);
+            t.setAttribute('fill', isActive ? '#fff' : '#64748b');
+            svg.appendChild(t);
+          }
+
+          var ang2 = ((val / total) * 2 * Math.PI) - Math.PI / 2;
+          var hx = cx + handR * Math.cos(ang2);
+          var hy = cy + handR * Math.sin(ang2);
+          document.getElementById('azan-clock-hand').setAttribute('x2', hx.toFixed(1));
+          document.getElementById('azan-clock-hand').setAttribute('y2', hy.toFixed(1));
+          document.getElementById('azan-clock-dot').setAttribute('cx', hx.toFixed(1));
+          document.getElementById('azan-clock-dot').setAttribute('cy', hy.toFixed(1));
+          document.getElementById('azan-clock-num-label').textContent = isMinit ? (selMinit < 10 ? '0' + selMinit : '' + selMinit) : '' + selJam12;
+
+          var jam12Str = (selJam12 < 10 ? '0' : '') + selJam12;
+          var minitStr = (selMinit < 10 ? '0' : '') + selMinit;
+          document.getElementById('azan-clock-display').textContent = jam12Str + ':' + minitStr;
+          document.getElementById('azan-clock-mode-label').textContent = clockMode === 'jam' ? 'Ketik JAM' : 'Ketik MINIT';
+          kemaskiniPreview();
+        }
+
+        function kemaskiniPreview() {
+          var jam24;
+          if (selAmpm === 0) { jam24 = selJam12 === 12 ? 0 : selJam12; }
+          else { jam24 = selJam12 === 12 ? 12 : selJam12 + 12; }
+          var jamStr = (jam24 < 10 ? '0' : '') + jam24;
+          var minitStr = (selMinit < 10 ? '0' : '') + selMinit;
+          var ampmStr = selAmpm === 0 ? 'AM' : 'PM';
+          var jam12Str = (selJam12 < 10 ? '0' : '') + selJam12;
+          document.getElementById('azan-test-preview').textContent = jam12Str + ':' + minitStr + ' ' + ampmStr;
+          document.getElementById('azan-test-input').value = jamStr + ':' + minitStr;
+        }
+
+        function nilaiDariSentuh(e) {
+          var svg = document.getElementById('azan-clock-svg');
+          var rect = svg.getBoundingClientRect();
+          var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          var dx = (clientX - rect.left) * (220 / rect.width) - cx;
+          var dy = (clientY - rect.top) * (220 / rect.height) - cy;
+          var ang = Math.atan2(dy, dx) + Math.PI / 2;
+          if (ang < 0) ang += 2 * Math.PI;
+          if (clockMode === 'jam') {
+            var jam = Math.round(ang / (2 * Math.PI) * 12);
+            selJam12 = jam === 0 ? 12 : jam;
+          } else {
+            var minit = Math.round(ang / (2 * Math.PI) * 60);
+            selMinit = minit === 60 ? 0 : minit;
+          }
+          lukisClock();
+        }
+
+        var svg = document.getElementById('azan-clock-svg');
+        svg.addEventListener('mousedown', function(e) { e.preventDefault(); nilaiDariSentuh(e); });
+        svg.addEventListener('mousemove', function(e) { if (e.buttons !== 1) return; e.preventDefault(); nilaiDariSentuh(e); });
+        svg.addEventListener('mouseup', function() { if (clockMode === 'jam') { clockMode = 'minit'; lukisClock(); } });
+        svg.addEventListener('touchstart', function(e) { e.preventDefault(); nilaiDariSentuh(e); }, { passive: false });
+        svg.addEventListener('touchmove', function(e) { e.preventDefault(); nilaiDariSentuh(e); }, { passive: false });
+        svg.addEventListener('touchend', function() { if (clockMode === 'jam') { clockMode = 'minit'; lukisClock(); } });
+
+        window.azanPickerSetAmpm = function(idx) {
+          selAmpm = idx;
+          document.getElementById('btn-ampm-am').style.background = idx === 0 ? '#6366f1' : 'transparent';
+          document.getElementById('btn-ampm-am').style.color = idx === 0 ? '#fff' : '#9ca3af';
+          document.getElementById('btn-ampm-am').style.borderColor = idx === 0 ? '#6366f1' : '#334155';
+          document.getElementById('btn-ampm-pm').style.background = idx === 1 ? '#6366f1' : 'transparent';
+          document.getElementById('btn-ampm-pm').style.color = idx === 1 ? '#fff' : '#9ca3af';
+          document.getElementById('btn-ampm-pm').style.borderColor = idx === 1 ? '#6366f1' : '#334155';
+          kemaskiniPreview();
+        };
+
+        window._azanClockSetFromDate = function(d) {
+          clockMode = 'jam';
+          selJam12 = d.getHours() % 12 || 12;
+          selMinit = d.getMinutes();
+          selAmpm = d.getHours() >= 12 ? 1 : 0;
+          azanPickerSetAmpm(selAmpm);
+          lukisClock();
+        };
+
+        function toggleClockMode() {
+          clockMode = (clockMode === 'jam') ? 'minit' : 'jam';
+          lukisClock();
+        }
+        var modeLbl = document.getElementById('azan-clock-mode-label');
+        var dispEl = document.getElementById('azan-clock-display');
+        if (modeLbl) modeLbl.onclick = toggleClockMode;
+        if (dispEl) dispEl.onclick = toggleClockMode;
+
+        azanPickerSetAmpm(selAmpm);
+        lukisClock();
+      })();
+
+      // Test mode
+      elAzan('btn-azan-test').onclick = function() {
+        elAzan('azan-test-panel').className = 'azan-test-panel active';
+        clockMode = 'jam';
+        var n2 = new Date();
+        selJam12 = n2.getHours() % 12 || 12;
+        selMinit = n2.getMinutes();
+        selAmpm = n2.getHours() >= 12 ? 1 : 0;
+        azanPickerSetAmpm(selAmpm);
+        lukisClock();
+      };
+      elAzan('btn-azan-test-cancel').onclick = function() {
+        elAzan('azan-test-panel').className = 'azan-test-panel';
+      };
+      elAzan('btn-azan-test-set').onclick = function() {
+        var val = elAzan('azan-test-input').value;
+        if (!val) return;
+        clearAzanTimers();
+        var parts = val.split(':');
+        var h = parseInt(parts[0]); var m = parseInt(parts[1]);
+        var now = new Date();
+        var azanMs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0).getTime();
+        var ms20 = azanMs - 20 * 60 * 1000 - now.getTime();
+        var ms5  = azanMs - 5  * 60 * 1000 - now.getTime();
+        var namaTest = 'Test Azan';
+        var jamTest = val;
+        if (ms20 > 0) {
+          _azanTimers.push(setTimeout(function() {
+            triggerLock('pin', namaTest, jamTest, _lokasiNama || 'Test');
+          }, ms20));
+        } else if (ms5 > 0) {
+          triggerLock('pin', namaTest, jamTest, _lokasiNama || 'Test');
+        }
+        if (ms5 > 0) {
+          _azanTimers.push(setTimeout(function() {
+            triggerLock('countdown', namaTest, jamTest, _lokasiNama || 'Test');
+          }, ms5));
+        } else if (ms20 <= 0 && ms5 <= 0) {
+          // Waktu dah lepas — trigger countdown terus
+          triggerLock('countdown', namaTest, jamTest, _lokasiNama || 'Test');
+        }
+        elAzan('azan-test-panel').className = 'azan-test-panel';
+      };
+
+      function getNowMs() { return Date.now() + _testOffset; }
+
+      function tambahAzanLog(mesej) {}
+
+      function paparWaktuSolat(waktuList) {
+        var wrap = document.getElementById('azan-log-wrap');
+        var list = document.getElementById('azan-log-list');
+        if (!wrap || !list || !waktuList || !waktuList.length) return;
+        var namaSolat = ['Subuh', 'Zohor', 'Asar', 'Maghrib', 'Isyak'];
+        var html = '';
+        waktuList.forEach(function(item) {
+          if (namaSolat.indexOf(item.nama) === -1) return;
+          var d = new Date(item.waktuMs);
+          var hh = d.getHours(); var mm = d.getMinutes();
+          var ampm = hh >= 12 ? 'pm' : 'am';
+          var hh12 = hh % 12 || 12;
+          var mmStr = mm < 10 ? '0' + mm : '' + mm;
+          html += '<div style="display:flex;justify-content:space-between;"><span>' + item.nama + '</span><span style="color:#34d399;">' + hh12 + ':' + mmStr + ampm + '</span></div>';
+        });
+        list.innerHTML = html;
+        wrap.style.display = html ? 'block' : 'none';
+      }
+
+      var _testOffset = 0;
+      var _testAktif = false;
+
+      function kemaskiniOffsetLabel() {
+        var lbl = elAzan('azan-test-offset-label');
+        var stop = elAzan('btn-azan-test-stop');
+        var setBtn = elAzan('btn-azan-test-set');
+        var floatBtn = elAzan('btn-azan-test');
+        var pill = elAzan('azan-test-status-pill');
+        if (!lbl || !stop) return;
+        if (_testAktif) {
+          var fakeNow = new Date(getNowMs());
+          var hh = fakeNow.getHours(); var mm = fakeNow.getMinutes();
+          var ampm = hh >= 12 ? 'pm' : 'am';
+          var hh12 = hh % 12 || 12;
+          var mmStr = mm < 10 ? '0' + mm : '' + mm;
+          var tDate = fakeNow.toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+          lbl.textContent = 'TEST ON · masa palsu: ' + hh12 + ':' + mmStr + ampm + ', ' + tDate;
+          lbl.style.display = 'block';
+          lbl.style.color = '#34d399';
+          lbl.style.fontWeight = 'bold';
+          stop.style.display = 'block';
+          if (setBtn) setBtn.style.display = 'none';
+          if (floatBtn) { floatBtn.textContent = '🧪 TEST ON'; floatBtn.className = 'azan-test-btn on'; }
+          if (pill) { pill.style.display = 'block'; pill.textContent = 'TEST SEDANG AKTIF · ' + hh12 + ':' + mmStr + ampm; }
+        } else {
+          lbl.textContent = 'TEST OFF — guna jam sebenar';
+          lbl.style.display = 'block';
+          lbl.style.color = '#9ca3af';
+          lbl.style.fontWeight = 'normal';
+          stop.style.display = 'none';
+          if (setBtn) setBtn.style.display = 'block';
+          if (floatBtn) { floatBtn.textContent = '🧪 Test Azan'; floatBtn.className = 'azan-test-btn'; }
+          if (pill) pill.style.display = 'none';
+        }
+      }
+
+      function resetPickerKeJamAsal() {
+        var realNow = new Date();
+        var yyyy = realNow.getFullYear();
+        var mm = realNow.getMonth() + 1;
+        var dd = realNow.getDate();
+        var tarikhStr = yyyy + '-' + (mm < 10 ? '0' : '') + mm + '-' + (dd < 10 ? '0' : '') + dd;
+        document.getElementById('azan-test-tarikh').value = tarikhStr;
+        if (window._azanClockSetFromDate) window._azanClockSetFromDate(realNow);
+      }
+
+      elAzan('btn-azan-test').onclick = function() {
+        elAzan('azan-test-panel').className = 'azan-test-panel active';
+        resetPickerKeJamAsal();
+        kemaskiniOffsetLabel();
+      };
+
+      elAzan('btn-azan-test-cancel').onclick = function() {
+        elAzan('azan-test-panel').className = 'azan-test-panel';
+        resetPickerKeJamAsal();
+      };
+
+      elAzan('btn-azan-test-stop').onclick = function() {
+        _testOffset = 0;
+        _testAktif = false;
+        resetPickerKeJamAsal();
+        kemaskiniOffsetLabel();
+        if (currentUser) fetchAzanData(currentUser.uid);
+      };
+
+      elAzan('btn-azan-test-set').onclick = function() {
+        var val = elAzan('azan-test-input').value;
+        var tarikhVal = document.getElementById('azan-test-tarikh').value;
+        if (!val || !tarikhVal) return;
+        var parts = val.split(':');
+        var h = parseInt(parts[0]); var m = parseInt(parts[1]);
+        var tParts = tarikhVal.split('-');
+        var yr = parseInt(tParts[0]); var mo = parseInt(tParts[1]) - 1; var dy = parseInt(tParts[2]);
+        var targetMs = new Date(yr, mo, dy, h, m, 0).getTime();
+        _testOffset = targetMs - Date.now();
+        _testAktif = true;
+        kemaskiniOffsetLabel();
+        if (currentUser) fetchAzanData(currentUser.uid);
+        resetPickerKeJamAsal();
+      };
+
+      elAzan('btn-azan-test-clear-unlock').onclick = function() {
+        if (!currentUser) return;
+        wsConfirm('Padam semua sejarah unlock azan?\nLock waktu solat boleh muncul semula.', function() {
+          _azanUnlocked = {};
+          db.collection('users').doc(currentUser.uid)
+            .collection('kindle_settings').doc('azan_unlocked')
+            .delete()
+            .then(function() {
+              var preview = elAzan('azan-test-preview');
+              if (preview) preview.textContent = 'Sejarah unlock azan dipadam';
+            })
+            .catch(function(e) {
+              var preview = elAzan('azan-test-preview');
+              if (preview) preview.textContent = 'Gagal padam: ' + (e.message || e);
+            });
+        });
+      };
+
+      window._azanClockSetFromDate = function(d) {
+        clockMode = 'jam';
+        selJam12 = d.getHours() % 12 || 12;
+        selMinit = d.getMinutes();
+        selAmpm = d.getHours() >= 12 ? 1 : 0;
+        azanPickerSetAmpm(selAmpm);
+        lukisClock();
+      };
+
+      // Export fungsi untuk dipanggil selepas login
+      window._azanInit = function(uid) { fetchAzanData(uid); };
+      window._azanSelesai = function() {
+        setTimeout(function() {
+          if (typeof semakReminderKindle === 'function' && window._reminderBolehCheck) {
+            var lockOverlay = document.getElementById('lock-overlay');
+            if (!lockOverlay || !lockOverlay.classList.contains('active')) {
+              semakReminderKindle();
+            }
+          }
+        }, 1000);
+      };
+    })();
+
+    // ══════════════════════════════════════════
+    // REMINDER SISTEM
+    // ══════════════════════════════════════════
+    var allRemindersKindle = [];
+    var _reminderUnsub = null;
+    var reminderSnoozedUntil = 0;
+    var reminderCheckInterval = null;
+    var _reminderPrevScreen = 'screen-menu';
+
+    document.getElementById('btn-go-reminder-list').onclick = function() {
+      _reminderPrevScreen = document.querySelector('.screen.active') ? document.querySelector('.screen.active').id : 'screen-menu';
+      showScreen('screen-reminder-list');
+      renderReminderKindle();
+    };
+    var _btnRemPlay = document.getElementById('btn-go-reminder-play');
+    if (_btnRemPlay) _btnRemPlay.onclick = function() {
+      _reminderPrevScreen = 'screen-play';
+      showScreen('screen-reminder-list');
+      renderReminderKindle();
+    };
+
+    document.getElementById('btn-reminder-list-back').onclick = function() {
+      showScreen(_reminderPrevScreen || 'screen-play');
+    };
+
+    document.getElementById('btn-reminder-tambah').onclick = function() {
+      document.getElementById('rk-nama').value = '';
+      document.getElementById('rk-tarikh').value = '';
+      document.getElementById('rk-masa').value = '';
+      document.getElementById('rk-nota').value = '';
+      document.getElementById('rk-msg').textContent = '';
+      showScreen('screen-reminder-tambah');
+      setTimeout(function() { document.getElementById('rk-nama').focus(); }, 300);
+    };
+
+    document.getElementById('btn-rk-batal').onclick = function() {
+      showScreen('screen-reminder-list');
+    };
+
+    document.getElementById('btn-rk-simpan').onclick = function() {
+      if (!currentUser) return;
+      var nama = document.getElementById('rk-nama').value.trim();
+      var tarikh = document.getElementById('rk-tarikh').value;
+      var masa = document.getElementById('rk-masa').value;
+      var nota = document.getElementById('rk-nota').value.trim();
+      var msg = document.getElementById('rk-msg');
+      if (!nama) { msg.textContent = 'Sila masukkan nama temu janji.'; return; }
+      if (!tarikh) { msg.textContent = 'Sila pilih tarikh.'; return; }
+      msg.textContent = 'Menyimpan...';
+      var btn = document.getElementById('btn-rk-simpan');
+      btn.disabled = true;
+      db.collection('users').doc(currentUser.uid).collection('reminders').add({
+        nama: nama, tarikh: tarikh, masa: masa, nota: nota,
+        aktif: true, harian: false, harianFasa: [], createdAt: Date.now()
+      }).then(function() {
+        msg.textContent = 'Tersimpan!';
+        setTimeout(function() { showScreen('screen-reminder-list'); renderReminderKindle(); }, 1000);
+      }).catch(function(e) {
+        msg.textContent = 'Gagal: ' + (e.message || e);
+        btn.disabled = false;
+      });
+    };
+
+    document.getElementById('btn-ra-tidur').onclick = function() {
+      reminderSnoozedUntil = Date.now() + (2 * 60 * 60 * 1000);
+      document.getElementById('ra-countdown').textContent = '';
+      showScreen(_reminderPrevScreen || 'screen-play');
+    };
+
+    function tunjukReminderScreen(reminder, diffHari, isHarian, fasaAktif) {
+      var labelHari = '';
+      if (isHarian) {
+        var h = new Date(); var hh = h.getHours(); var mm = String(h.getMinutes()).padStart(2, '0');
+        labelHari = 'HARIAN - ' + (hh % 12 || 12) + ':' + mm + (hh >= 12 ? 'ptg' : 'pg');
+      } else if (diffHari === 0) labelHari = '*** HARI INI ***';
+      else if (diffHari === 1) labelHari = '** ESOK **';
+      else if (diffHari === 3) labelHari = '* 3 HARI LAGI *';
+      var tarikhObj = reminder.tarikh ? new Date(reminder.tarikh + 'T00:00:00') : null;
+      var tarikhLabel = tarikhObj ? tarikhObj.toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      var masaLabel = reminder.masa ? ' - ' + reminder.masa : '';
+      setText('ra-hari', labelHari);
+      setText('ra-nama', reminder.nama || 'Temu Janji');
+      setText('ra-tarikh', tarikhLabel + masaLabel);
+      var notaEl = document.getElementById('ra-nota');
+      if (reminder.nota) { notaEl.textContent = reminder.nota; notaEl.style.display = 'block'; }
+      else { notaEl.style.display = 'none'; }
+      var intervalMinit = isHarian ? (fasaAktif ? fasaAktif.freq || 10 : 10) : (diffHari === 0 ? 5 : 10);
+      var snoozeMs = intervalMinit * 60 * 1000;
+      var inputEl = document.getElementById('ra-input');
+      var pesanEl = document.getElementById('ra-pesan');
+      inputEl.value = ''; pesanEl.textContent = '';
+      var activeScr = document.querySelector('.screen.active');
+      if (activeScr && activeScr.id !== 'screen-reminder-aktif') {
+        _reminderPrevScreen = activeScr.id;
+      }
+      showScreen('screen-reminder-aktif');
+      setTimeout(function() { inputEl.focus(); }, 300);
+      var newInput = inputEl.cloneNode(true);
+      inputEl.parentNode.replaceChild(newInput, inputEl);
+      function cubaIngat() {
+        if (newInput.value.trim().toLowerCase() === 'saya ingat') {
+          reminderSnoozedUntil = Date.now() + snoozeMs;
+          showScreen(_reminderPrevScreen || 'screen-play');
+          if (window._azanSelesai) window._azanSelesai();
+        } else {
+          pesanEl.textContent = 'Sila taip "saya ingat" untuk tutup.';
+          newInput.focus();
+        }
+      }
+      newInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') cubaIngat(); });
+      newInput.addEventListener('input', function() { if (newInput.value.trim().toLowerCase() === 'saya ingat') cubaIngat(); });
+    }
+
+    function renderReminderKindle() {
+      var list = document.getElementById('reminder-list-kindle');
+      if (!list) return;
+      list.innerHTML = '';
+      if (!allRemindersKindle.length) {
+        list.innerHTML = '<div style="text-align:center;color:#000;padding:20px;">Tiada temu janji. Tekan + Tambah.</div>';
+        return;
+      }
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var sorted = allRemindersKindle.slice().sort(function(a, b) {
+        if (!a.tarikh) return 1; if (!b.tarikh) return -1;
+        return new Date(a.tarikh) - new Date(b.tarikh);
+      });
+      sorted.forEach(function(data) {
+        var tarikhObj = data.tarikh ? new Date(data.tarikh + 'T00:00:00') : null;
+        var diffHari = tarikhObj ? Math.round((tarikhObj - today) / (1000 * 60 * 60 * 24)) : null;
+        var statusLabel = 'Tiada tarikh';
+        if (diffHari !== null) {
+          if (diffHari < 0) { statusLabel = Math.abs(diffHari) + ' hari lepas'; }
+          else if (diffHari === 0) { statusLabel = '*** HARI INI ***'; }
+          else if (diffHari === 1) { statusLabel = '** ESOK **'; }
+          else if (diffHari <= 3) { statusLabel = '* ' + diffHari + ' hari lagi *'; }
+          else { statusLabel = diffHari + ' hari lagi'; }
+        }
+        if (data.harian) { statusLabel = '[ HARIAN ]'; }
+        var tarikhLabel = tarikhObj ? tarikhObj.toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+        var masaLabel = data.masa ? ' - ' + data.masa : '';
+        var borderStyle = diffHari === 0 ? '3px solid #000' : '2px solid #000';
+        var bgColor = diffHari === 0 ? '#000' : '#fff';
+        var txtColor = diffHari === 0 ? '#fff' : '#000';
+        var div = document.createElement('div');
+        div.style.cssText = 'border:' + borderStyle + ';border-radius:4px;padding:10px;margin-bottom:10px;background:' + bgColor + ';color:' + txtColor + ';';
+        var captured = data;
+        div.innerHTML =
+          '<div style="font-size:0.72rem;font-weight:bold;margin-bottom:4px;">' + statusLabel + '</div>' +
+          '<div style="font-weight:bold;font-size:0.95rem;margin-bottom:2px;">' + (data.nama || '(Tiada nama)') + '</div>' +
+          '<div style="font-size:0.75rem;">' + tarikhLabel + masaLabel + '</div>' +
+          (data.nota ? '<div style="font-size:0.72rem;margin-top:4px;">' + data.nota.substring(0, 60) + (data.nota.length > 60 ? '...' : '') + '</div>' : '') +
+          '<div style="margin-top:8px;"><div class="rk-padam-btn" style="display:inline-block;font-size:0.75rem;font-weight:bold;border:2px solid ' + txtColor + ';padding:5px 14px;border-radius:4px;cursor:pointer;background:' + txtColor + ';color:' + bgColor + ';">Padam</div></div>';
+        div.querySelector('.rk-padam-btn').addEventListener('click', function(e) {
+          e.stopPropagation();
+          wsConfirm('Padam temu janji ini?\n\n' + (captured.nama || ''), function() {
+            db.collection('users').doc(currentUser.uid).collection('reminders').doc(captured.id).delete()
+              .then(function() { setText('reminder-list-status', 'Dipadam!'); setTimeout(function() { setText('reminder-list-status', 'REMINDER'); }, 2000); })
+              .catch(function(err) { setText('reminder-list-status', 'Gagal: ' + (err.message || err)); });
+          });
+        });
+        list.appendChild(div);
+      });
+    }
+
+    function subscribeReminderKindle() {
+      if (!currentUser || _reminderUnsub) return;
+      _reminderUnsub = db.collection('users').doc(currentUser.uid)
+        .collection('reminders').orderBy('createdAt', 'asc')
+        .onSnapshot(function(snap) {
+          allRemindersKindle = [];
+          snap.forEach(function(d) { var x = d.data(); x.id = d.id; allRemindersKindle.push(x); });
+          var scr = document.getElementById('screen-reminder-list');
+          if (scr && scr.classList.contains('active')) renderReminderKindle();
+        }, function(e) { console.error('reminder:', e); });
+    }
+
+    function semakReminderKindle() {
+      if (!window._reminderBolehCheck) return;
+      var raScr = document.getElementById('screen-reminder-aktif');
+      if (raScr && raScr.classList.contains('active')) return;
+      if (Date.now() < reminderSnoozedUntil) return;
+      if (!allRemindersKindle.length) return;
+      var now = new Date();
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var nowJam = now.getHours() * 60 + now.getMinutes();
+      for (var i = 0; i < allRemindersKindle.length; i++) {
+        var reminder = allRemindersKindle[i];
+        if (!reminder.aktif) continue;
+        if (reminder.harian) {
+          var fasaList = reminder.harianFasa || [];
+          var fasaAktif = null;
+          for (var j = 0; j < fasaList.length; j++) {
+            var fasa = fasaList[j];
+            if (!fasa.mula || !fasa.tamat) continue;
+            var mulaMinit = parseInt(fasa.mula.split(':')[0]) * 60 + parseInt(fasa.mula.split(':')[1]);
+            var tamatMinit = parseInt(fasa.tamat.split(':')[0]) * 60 + parseInt(fasa.tamat.split(':')[1]);
+            if (nowJam >= mulaMinit && nowJam < tamatMinit) { fasaAktif = fasa; break; }
+          }
+          if (!fasaAktif) continue;
+          var jamMula = parseInt(fasaAktif.mula.split(':')[0]);
+          var minitMula = parseInt(fasaAktif.mula.split(':')[1]);
+          var masaMula = new Date(); masaMula.setHours(jamMula, minitMula, 0, 0);
+          var freqMs = (fasaAktif.freq || 10) * 60 * 1000;
+          var selang = now.getTime() - masaMula.getTime();
+          var kitarMs = masaMula.getTime() + (Math.floor(selang / freqMs) * freqMs);
+          if ((now.getTime() - kitarMs) < 60000) { tunjukReminderScreen(reminder, null, true, fasaAktif); return; }
+          continue;
+        }
+        if (!reminder.tarikh) continue;
+        var tarikhR = new Date(reminder.tarikh + 'T00:00:00'); tarikhR.setHours(0, 0, 0, 0);
+        var diffHari = Math.ceil((tarikhR - today) / (1000 * 60 * 60 * 24));
+        if (diffHari === 0 || diffHari === 1 || diffHari === 3) { tunjukReminderScreen(reminder, diffHari, false); return; }
+      }
+    }
+
+    function mulakanReminderCheckKindle() {
+      if (reminderCheckInterval) clearInterval(reminderCheckInterval);
+      reminderCheckInterval = setInterval(function() {
+        if (!window._reminderBolehCheck) return;
+        semakReminderKindle();
+      }, 60 * 1000);
+    }
+
+    auth.onAuthStateChanged(function(user) {
+      currentUser = user;
+      document.getElementById('btn-login').disabled = false;
+      document.body.classList.remove('auth-checking');
+      if (user) {
+        setText('menu-user-label', user.email || '');
+        loadDoaHadisCollections(null);
+        subscribeWsNotif(user.uid);
+        window._azanInit(user.uid);
+        if (window._loadManualLockState) window._loadManualLockState();
+        subscribeReminderKindle();
+        mulakanReminderCheckKindle();
+        showScreen('screen-menu');
+      } else {
+        if (_reminderUnsub) { _reminderUnsub(); _reminderUnsub = null; }
+        if (reminderCheckInterval) clearInterval(reminderCheckInterval);
+        allRemindersKindle = [];
+        window._reminderBolehCheck = false;
+        window._azanFasaSemasa = '';
+        if (_unsubQuran) { _unsubQuran(); _unsubQuran = null; }
+        if (_unsubMini) { _unsubMini(); _unsubMini = null; }
+        allQuranDrawers = [];
+        miniCache = {};
+        cards = [];
+        quranSurahSemasa = 1;
+        quranAyatSemasa = 0;
+        isFlipped = false;
+        isBusy = false;
+        isLoading = false;
+        terskipCards = []; terskipIdx = 0;
+        var terskipEl = document.getElementById('terskip-overlay');
+        if (terskipEl) terskipEl.className = '';
+        if (typeof stopAllListeners === 'function') stopAllListeners();
+        stopWsNotif();
+        showScreen('screen-login');
+        setText('login-msg', '');
+      }
+    });
+
+  </script>
+</body>
+</html>
