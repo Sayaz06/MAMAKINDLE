@@ -2468,7 +2468,6 @@
         var count = drawers.filter(function(d) {
           return d.timeId === t.id && (d.zikir || d.maksud || d.title);
         }).length;
-        if (!count) return; // skip kategori kosong
 
         var div = document.createElement('div');
         div.className = 'kat-item' + (!bacaSemua && activeTimeId === t.id ? ' aktif' : '');
@@ -2540,22 +2539,23 @@
 
     function loadNamedDrawersOnDemand(mode, coll, cb) {
       if (!currentUser) { cb && cb(); return; }
-      var cacheKey = mode === 'wirid' ? '_wiridDrawerCache' : '_solatDrawerCache';
-      if (window[cacheKey]) {
-        if (mode === 'wirid') allWiridDrawers = window[cacheKey];
-        else allSolatDrawers = window[cacheKey];
-        cb && cb();
-        return;
-      }
-      db.collection('users').doc(currentUser.uid).collection(coll).get()
-        .then(function(snap) {
+      var isWirid = mode === 'wirid';
+      var unsubKey = isWirid ? '_wiridDrawersUnsub' : '_solatDrawersUnsub';
+      if (window[unsubKey]) { window[unsubKey](); window[unsubKey] = null; }
+      window[unsubKey] = db.collection('users').doc(currentUser.uid).collection(coll)
+        .onSnapshot(function(snap) {
           var arr = [];
           snap.forEach(function(d) { var x = d.data(); x.id = d.id; arr.push(x); });
-          window[cacheKey] = arr;
-          if (mode === 'wirid') allWiridDrawers = arr;
-          else allSolatDrawers = arr;
-          cb && cb();
-        }).catch(function() { cb && cb(); });
+          if (isWirid) { allWiridDrawers = arr; _wiridDrawerCache = arr; }
+          else { allSolatDrawers = arr; _solatDrawerCache = arr; }
+          var kat = document.getElementById('screen-kat');
+          if (kat && kat.classList.contains('active') && currentMode === mode) renderKatList(mode);
+          if (currentMode === mode && document.getElementById('screen-tasbih') && document.getElementById('screen-tasbih').classList.contains('active')) {
+            if (activeTimeId) buildActiveLacis(mode);
+            renderLaci();
+          }
+          if (cb) { var fn = cb; cb = null; fn(); }
+        }, function() { if (cb) { var fn = cb; cb = null; fn(); } });
     }
 
     function loadDoaDrawersOnDemand(cb) {
@@ -2602,36 +2602,36 @@
         });
     }
 
+    var _timesUnsubs = [];
     function loadDoaHadisCollections(cb) {
       if (!currentUser) { cb && cb(); return; }
       var uid = currentUser.uid;
-
-      // Hanya load times (metadata kecil) — drawers load on-demand bila user pilih kategori
-      Promise.all([
-        db.collection('users').doc(uid).collection('doa_times').get(),
-        db.collection('users').doc(uid).collection('hadis_times').get(),
-        db.collection('users').doc(uid).collection('routine_times').get(),
-        db.collection('users').doc(uid).collection('solat_times').get()
-      ]).then(function(res) {
-        allDoaTimes = [];
-        res[0].forEach(function(d) { var x = d.data(); x.id = d.id; allDoaTimes.push(x); });
-
-        allHadisTimes = [];
-        res[1].forEach(function(d) { var x = d.data(); x.id = d.id; allHadisTimes.push(x); });
-
-        allWiridTimes = [];
-        res[2].forEach(function(d) { var x = d.data(); x.id = d.id; allWiridTimes.push(x); });
-
-        allSolatTimes = [];
-        res[3].forEach(function(d) { var x = d.data(); x.id = d.id; allSolatTimes.push(x); });
-
-        collectionsLoaded = true;
-        console.log('📥 times diload. Drawers akan load on-demand.');
-        cb && cb();
-      }).catch(function(e) {
-        setErr('menu-err', 'Gagal load: ' + (e.message || e));
-        cb && cb();
-      });
+      _timesUnsubs.forEach(function(u) { try { u(); } catch(e) {} });
+      _timesUnsubs = [];
+      var pending = 4;
+      function doneOne() {
+        pending--;
+        if (pending <= 0) {
+          collectionsLoaded = true;
+          if (cb) { var fn = cb; cb = null; fn(); }
+        }
+      }
+      function bindTimes(coll, assign, screenId, modeName) {
+        var unsub = db.collection('users').doc(uid).collection(coll)
+          .onSnapshot(function(snap) {
+            var arr = [];
+            snap.forEach(function(d) { var x = d.data(); x.id = d.id; arr.push(x); });
+            assign(arr);
+            var kat = document.getElementById('screen-kat');
+            if (kat && kat.classList.contains('active') && currentMode === modeName) renderKatList(modeName);
+            doneOne();
+          }, function() { doneOne(); });
+        _timesUnsubs.push(unsub);
+      }
+      bindTimes('doa_times', function(d){ allDoaTimes = d; }, 'section-doa-times', 'doa');
+      bindTimes('hadis_times', function(d){ allHadisTimes = d; }, 'section-hadis-times', 'hadis');
+      bindTimes('routine_times', function(d){ allWiridTimes = d; }, 'section-wirid-times', 'wirid');
+      bindTimes('solat_times', function(d){ allSolatTimes = d; }, 'section-solat-times', 'solat');
     }
 
     /* ══════════════════════════════════════════
@@ -2986,7 +2986,18 @@
       clearMsg('tasbih-err');
       clearMsg('tasbih-ok');
       setConn(null, 'Menyegar...');
-
+      _doaDrawerCache = null;
+      _hadisDrawerCache = null;
+      _wiridDrawerCache = null;
+      _solatDrawerCache = null;
+      loadDoaHadisCollections(function() {
+        if (currentMode === 'wirid' || currentMode === 'solat' || currentMode === 'doa' || currentMode === 'hadis') {
+          loadDrawersOnDemand(currentMode, function() {
+            if (activeTimeId) buildActiveLacis(currentMode);
+            renderLaci();
+          });
+        }
+      });
       var coll = modeMeta(currentMode).tasbihColl || 'tasbih';
       subscribeTasbih(coll, todayKey());
     });
